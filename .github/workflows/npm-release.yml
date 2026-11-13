@@ -22,6 +22,10 @@ on:
         description: "SHA-256 of the archive from phase 1 (required when publish=true)"
         type: string
         required: false
+      source_tag:
+        description: "Optional existing release tag to reuse the previously verified source."
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -37,10 +41,20 @@ jobs:
     timeout-minutes: 20
     outputs:
       artifact_id: ${{ steps.upload.outputs.artifact-id }}
+      source_sha: ${{ steps.source.outputs.sha }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+          ref: ${{ inputs.source_tag && format('refs/tags/{0}', inputs.source_tag) || github.sha }}
+      - id: source
+        env:
+          SOURCE_TAG: ${{ inputs.source_tag }}
+        run: |
+          if [ -n "$SOURCE_TAG" ]; then
+            printf '%s\n' "$SOURCE_TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-preview\.[0-9]+$'
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "24.21.0"
@@ -58,7 +72,7 @@ jobs:
         run: node scripts/build-preview-package.mjs --out dist
       - name: Write archive and build receipt
         env:
-          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_COMMIT: ${{ steps.source.outputs.sha }}
         run: |
           set -eu
           node scripts/write-build-receipt.mjs dist
@@ -103,7 +117,7 @@ jobs:
       - name: Verify exact archive, metadata and build receipt
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
-          BUILD_COMMIT: ${{ github.sha }}
+          BUILD_COMMIT: ${{ needs.verify.outputs.source_sha }}
         run: |
           set -eu
           test -n "${EXPECTED_SHA}"
@@ -139,6 +153,7 @@ jobs:
       - name: Attach the same bytes to a GitHub prerelease
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -eu
           VERSION="$(node -p "require('./dist/package/package.json').version")"
