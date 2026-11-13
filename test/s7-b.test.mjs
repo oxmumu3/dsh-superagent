@@ -8,7 +8,7 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's7-b-'))
 process.env.DSH_HOME = dir
 process.env.DSH_SUPERAGENT_LEDGER = path.join(dir, 'ledger.json')
 const {
-  beginDispatch, createTask, getTask, readLedger, rejectTask, reportExecution,
+  beginDispatch, checkItem, createTask, getTask, readLedger, rejectTask, reportExecution,
 } = await import('../lib/ledger.js')
 const { applyRequest, consumeQueue } = await import('../lib/queue.js')
 const { stageOf, buildCardDetail } = await import('../lib/viewmodel.js')
@@ -119,15 +119,134 @@ assert.ok(run.assignment.id)
   fs.writeFileSync(path.join(qdir2, 'requests.jsonl'), rows.map(row => JSON.stringify(row)).join('\n') + '\n')
   const applied = consumeQueue()
   assert.equal(applied.length, 3)
+  assert.ok(applied.every(row => row.duplicate === false), '第一次消费必须明确不是重放')
+  assert.equal(applied.find(row => row.action === 'checklist').items, 1, '第一次回执带清单数量')
+  assert.ok(applied.find(row => row.action === 'check').itemId, '第一次回执带勾选 item ID')
+  assert.equal(applied.find(row => row.action === 'report').status, 'in_review', '第一次回执带当时的卡状态')
   const handed = getTask(replayTask.id, { file })
+  assert.equal(handed.mcpRequests['r-lost-1'].receipt.items, 1, '回执和清单写入同一次落盘')
+  assert.equal(handed.mcpRequests['r-lost-2'].receipt.itemId, handed.checklist[0].id)
+  assert.equal(handed.mcpRequests['r-lost-3'].receipt.status, 'in_review')
   const executions = handed.executions.length
   const revision = readLedger(file).revision
   fs.rmSync(path.join(qdir2, 'results.jsonl'), { force: true })
   const replay = consumeQueue()
   assert.equal(replay.length, 3)
   assert.ok(replay.every(row => row.duplicate === true))
+  assert.equal(replay.find(row => row.action === 'report').status, 'in_review', '重放回到原回执状态')
   assert.equal(getTask(replayTask.id, { file }).executions.length, executions, '重放不得追加执行记录')
   assert.equal(readLedger(file).revision, revision, '重放不得再写台账')
+}
+
+// 9. 清空结果 + 用户打回后再重放原报告：回原 in_review 回执，当前卡不动。
+{
+  const queueDir = path.join(dir, 'taskboard-queue')
+  fs.rmSync(path.join(queueDir, 'requests.jsonl'), { force: true })
+  fs.rmSync(path.join(queueDir, 'results.jsonl'), { force: true })
+  const rejectedTask = createTask({ title: '打回后重放原报告', workspacePath: dir }, { file })
+  const rows = [
+    { id: 'r-rej-1', action: 'checklist', payload: { id: rejectedTask.id, items: ['唯一一项'] } },
+    { id: 'r-rej-2', action: 'check', payload: { id: rejectedTask.id, index: 0, note: '已验' } },
+    { id: 'r-rej-3', action: 'report', payload: { id: rejectedTask.id, summary: '交', outcome: 'ready', checks: ['x'] } },
+  ]
+  fs.writeFileSync(path.join(queueDir, 'requests.jsonl'), rows.map(row => JSON.stringify(row)).join('\n') + '\n')
+  const first = consumeQueue()
+  assert.equal(first.length, 3)
+  assert.ok(first.every(row => row.duplicate === false), '首次交活不是重放')
+  assert.equal(getTask(rejectedTask.id, { file }).status, 'in_review')
+
+  const rejected = rejectTask(rejectedTask.id, '用户打回', { file }).task
+  assert.equal(rejected.status, 'todo')
+  const before = JSON.stringify(getTask(rejectedTask.id, { file }))
+  const revision = readLedger(file).revision
+
+  fs.rmSync(path.join(queueDir, 'results.jsonl'), { force: true })
+  fs.writeFileSync(path.join(queueDir, 'requests.jsonl'), JSON.stringify(rows[2]) + '\n')
+  const replay = consumeQueue()
+  assert.equal(replay.length, 1)
+  assert.equal(replay[0].duplicate, true)
+  assert.equal(replay[0].status, 'in_review', '重放只读原回执，不拿当前 todo 冒充')
+  assert.equal(JSON.stringify(getTask(rejectedTask.id, { file })), before, '当前卡必须保持打回后的原样')
+  assert.equal(readLedger(file).revision, revision, '重放不得写台账')
+}
+
+// 10. 外部清单/勾选/报告成功后各占一个版本；同一个 ifVersion 的后到者被拒。
+{
+  const queueDir = path.join(dir, 'taskboard-queue')
+  fs.rmSync(path.join(queueDir, 'requests.jsonl'), { force: true })
+  fs.rmSync(path.join(queueDir, 'results.jsonl'), { force: true })
+  const versioned = createTask({ title: '同 ifVersion 并发', workspacePath: dir }, { file })
+  const v1 = versioned.version
+  const listed = req('r-v-1', 'checklist', { id: versioned.id, items: ['一', '二'], ifVersion: v1 })
+  assert.equal(listed.ok, true, listed.error)
+  assert.equal(listed.duplicate, false)
+  const afterList = getTask(versioned.id, { file })
+  assert.equal(afterList.version, v1 + 1, '外部写清单成功也要占一个版本')
+  const lateList = req('r-v-1b', 'checklist', { id: versioned.id, items: ['另一套'], ifVersion: v1 })
+  assert.equal(lateList.ok, false, '同一个 ifVersion 的后写清单不能覆盖')
+  assert.match(lateList.error, /version conflict/)
+  assert.deepEqual(getTask(versioned.id, { file }).checklist.map(item => item.text), ['一', '二'])
+
+  const [item0, item1] = afterList.checklist
+  const checked = req('r-v-2', 'check', {
+    id: versioned.id, itemId: item0.id, note: '已验一', ifVersion: afterList.version,
+  })
+  assert.equal(checked.ok, true, checked.error)
+  assert.equal(checked.itemId, item0.id)
+  const afterCheck = getTask(versioned.id, { file })
+  assert.equal(afterCheck.version, afterList.version + 1, '外部勾选成功也要占一个版本')
+
+  const lateCheck = req('r-v-3', 'check', {
+    id: versioned.id, itemId: item1.id, note: '已验二', ifVersion: afterList.version,
+  })
+  assert.equal(lateCheck.ok, false, '同一个 ifVersion 的后写不能覆盖')
+  assert.match(lateCheck.error, /version conflict/)
+  assert.equal(getTask(versioned.id, { file }).checklist[1].checked, false, '后写失败不得改到第二项')
+
+  // 原生勾选仍按原策略只改内容、不动版本；只有外部路径占版本。
+  const nativeVersion = getTask(versioned.id, { file }).version
+  checkItem(versioned.id, item1.id, { file, note: '原生勾' })
+  assert.equal(getTask(versioned.id, { file }).version, nativeVersion, '原生工具的状态版本策略不变')
+
+  const beforeReport = getTask(versioned.id, { file }).version
+  const progress = req('r-v-4', 'report', {
+    id: versioned.id, summary: '进行中', outcome: 'progress', ifVersion: beforeReport,
+  })
+  assert.equal(progress.ok, true, progress.error)
+  assert.equal(getTask(versioned.id, { file }).version, beforeReport + 1, '外部报告成功也要占一个版本')
+  const lateReport = req('r-v-5', 'report', {
+    id: versioned.id, summary: '迟到的进度', outcome: 'progress', ifVersion: beforeReport,
+  })
+  assert.equal(lateReport.ok, false)
+  assert.match(lateReport.error, /version conflict/)
+
+  // 原生报告仍按原策略：progress 不改状态就不占版本。只限外部路径。
+  const nativeTask = createTask({ title: '原生报告不占版本', workspacePath: dir }, { file })
+  const nativeReportVersion = nativeTask.version
+  reportExecution(nativeTask.id, { outcome: 'progress', summary: '原生进行中' }, { file })
+  assert.equal(getTask(nativeTask.id, { file }).version, nativeReportVersion, '原生工具的状态版本策略不变')
+}
+
+// 11. 同一 consume 批里重复的 request id 只写一次回执、只产出一条结果。
+{
+  const queueDir = path.join(dir, 'taskboard-queue')
+  fs.rmSync(path.join(queueDir, 'requests.jsonl'), { force: true })
+  fs.rmSync(path.join(queueDir, 'results.jsonl'), { force: true })
+  const duplicateTask = createTask({ title: '同批重复 id', workspacePath: dir }, { file })
+  const row = {
+    id: 'r-dup-batch',
+    action: 'checklist',
+    payload: { id: duplicateTask.id, items: ['一'] },
+  }
+  fs.writeFileSync(path.join(queueDir, 'requests.jsonl'), [row, row].map(item => JSON.stringify(item)).join('\n') + '\n')
+  const applied = consumeQueue()
+  assert.equal(applied.length, 1, '同批同一个 id 只执行一次')
+  assert.equal(applied[0].duplicate, false)
+  assert.equal(applied[0].items, 1)
+  const resultRows = fs.readFileSync(path.join(queueDir, 'results.jsonl'), 'utf8')
+    .split('\n').filter(Boolean).map(line => JSON.parse(line))
+  assert.equal(resultRows.filter(item => item.id === row.id).length, 1, '结果文件只写一条')
+  assert.equal(getTask(duplicateTask.id, { file }).mcpRequests[row.id].receipt.items, 1)
 }
 
 clean()
