@@ -1,0 +1,150 @@
+name: npm release
+
+# Two manual phases:
+#   1. publish=false (default) -> tests, client check, deterministic archive,
+#      SHA-256 and a BUILD.json receipt. No credentials, no write permissions.
+#   2. publish=true with the exact SHA from phase 1 -> publish exactly that one
+#      artifact to npm as `preview` and attach the same bytes to a GitHub
+#      prerelease. Only the canonical repository's main branch may publish.
+#
+# Trusted publishing uses OIDC; a long-lived npm token is not stored. The
+# publish job does not check out source and only receives this run's artifact.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "true only after verifying the exact SHA from phase 1"
+        type: choice
+        options: ["false", "true"]
+        default: "false"
+      expected_sha:
+        description: "SHA-256 of the archive from phase 1 (required when publish=true)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'oxmumu3/dsh-superagent' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+      - name: Pin npm for trusted publishing
+        run: |
+          set -eu
+          npm install -g npm@11.15.0
+          node --version
+          npm --version
+      - name: Unit tests
+        run: node scripts/run-tests.mjs
+      - name: Client bundle check
+        run: node scripts/check-client.cjs
+      - name: Build deterministic preview archive
+        run: node scripts/build-preview-package.mjs --out dist
+      - name: Write archive and build receipt
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          set -eu
+          node scripts/write-build-receipt.mjs dist
+          cd dist
+          sha256sum ./*.tgz > ARCHIVE.sha256
+          cat ARCHIVE.sha256
+      - id: upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: preview-archive
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: verify
+    if: >-
+      inputs.publish == 'true' &&
+      github.repository == 'oxmumu3/dsh-superagent' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          artifact-id: ${{ needs.verify.outputs.artifact_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: dist
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "24.21.0"
+          registry-url: "https://registry.npmjs.org"
+      - name: Pin npm for trusted publishing
+        run: |
+          set -eu
+          npm install -g npm@11.15.0
+          node --version
+          npm --version
+      - name: Verify exact archive, metadata and build receipt
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          set -eu
+          test -n "${EXPECTED_SHA}"
+          echo "${EXPECTED_SHA}" | grep -Eq '^[0-9a-f]{64}$'
+          actual="$(sha256sum ./dist/*.tgz | awk '{print $1}')"
+          test "${EXPECTED_SHA}" = "${actual}"
+          tar -xzf ./dist/*.tgz -C dist package/package.json
+          node - <<'NODE'
+          const fs = require('node:fs')
+          const crypto = require('node:crypto')
+          const zlib = require('node:zlib')
+          const receipt = JSON.parse(fs.readFileSync('dist/BUILD.json', 'utf8'))
+          const manifest = JSON.parse(fs.readFileSync('dist/package/package.json', 'utf8'))
+          const archive = fs.readFileSync(`dist/${receipt.archive}`)
+          const digest = value => crypto.createHash('sha256').update(value).digest('hex')
+          const same = (label, expected, actual) => {
+            if (expected !== actual) throw new Error(`${label} differs: ${expected} != ${actual}`)
+          }
+          same('archive SHA', process.env.EXPECTED_SHA, digest(archive))
+          same('receipt archive SHA', process.env.EXPECTED_SHA, receipt.archiveSha256)
+          same('uncompressed tar SHA', receipt.tarSha256, digest(zlib.gunzipSync(archive)))
+          same('commit', process.env.BUILD_COMMIT, receipt.commit)
+          same('package name', '@oxmumu3/dsh-superagent', manifest.name)
+          same('package version', receipt.version, manifest.version)
+          same('host engine', '0.2.2-rc.2', manifest.engines?.dsh)
+          same('repository', 'https://github.com/oxmumu3/dsh-superagent', typeof manifest.repository === 'string' ? manifest.repository : manifest.repository?.url)
+          if (manifest.private !== false) throw new Error('manifest is still private')
+          if (!Array.isArray(manifest.peerDependencies) && manifest.peerDependencies) throw new Error('unexpected peerDependencies')
+          console.log(JSON.stringify({ ok: true, version: manifest.version, archiveSha256: receipt.archiveSha256, commit: receipt.commit }))
+          NODE
+      - name: Publish exact artifact to npm preview
+        run: npm publish ./dist/*.tgz --provenance --access public --tag preview
+      - name: Attach the same bytes to a GitHub prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          VERSION="$(node -p "require('./dist/package/package.json').version")"
+          TAG="v${VERSION}"
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" ./dist/*.tgz --clobber
+          else
+            gh release create "${TAG}" ./dist/*.tgz --prerelease --title "${TAG}" --notes "Preview candidate. Not a stable release; npm dist-tag: preview."
+          fi

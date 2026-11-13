@@ -1,0 +1,4 @@
+# dsh-superagent bundle patch: insert the host row into the profile roster.
+- insert:
+    - id: dsh-superagent
+      name: "@oxmumu3/dsh-superagent"

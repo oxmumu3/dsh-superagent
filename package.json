@@ -1,0 +1,78 @@
+{
+  "name": "@oxmumu3/dsh-superagent",
+  "version": "0.2.0-preview.1",
+  "private": false,
+  "description": "Community Super Agent board for DeepSeek Harness: explicit card capture, a visible queue, and manual start into an independent execution session.",
+  "type": "module",
+  "main": "index.js",
+  "author": "牛村木木山",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oxmumu3/dsh-superagent"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "task-board",
+    "super-agent"
+  ],
+  "scripts": {
+    "test": "node scripts/run-tests.mjs",
+    "check:client": "node scripts/check-client.cjs",
+    "pack:preview": "node scripts/build-preview-package.mjs"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/capture-turn.js",
+    "lib/capture.js",
+    "lib/engine.js",
+    "lib/eval-turn.js",
+    "lib/eval.js",
+    "lib/host.js",
+    "lib/ledger.js",
+    "lib/nod.js",
+    "lib/patrol.js",
+    "lib/policy.js",
+    "lib/queue.js",
+    "lib/route.js",
+    "lib/router.js",
+    "lib/tools.js",
+    "lib/viewmodel.js",
+    "lib/workspace.js",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-plugin-manager"
+      ],
+      "external": []
+    },
+    "manifestVersion": 1
+  },
+  "engines": {
+    "node": ">=22",
+    "dsh": "0.2.2-rc.2"
+  }
+}

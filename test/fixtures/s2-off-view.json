@@ -1,0 +1,410 @@
+{
+  "generatedFrom": "ac6f2d1 lib/viewmodel.js buildView() on the fixed synthetic S2 ledger",
+  "note": "Frozen golden; no internal Git history is needed to run the public tests.",
+  "view": {
+    "at": 0,
+    "revision": 7,
+    "counts": {
+      "waiting": 3,
+      "running": 1,
+      "queued": 1,
+      "later": 1,
+      "doneToday": 0
+    },
+    "groups": {
+      "waiting": [
+        {
+          "id": "t-failed",
+          "title": "S3 合成 t-failed",
+          "version": 2,
+          "urgency": "normal",
+          "stage": "not_started",
+          "group": "waiting",
+          "reason": "没启动：合成启动失败",
+          "who": "",
+          "workspacePath": "<workspace>",
+          "workspaceLabel": "<workspace-label>",
+          "needsWorkspace": false,
+          "question": null,
+          "actions": [
+            {
+              "action": "retry",
+              "label": "再试一次",
+              "primary": true,
+              "needsText": false
+            },
+            {
+              "action": "cancel",
+              "label": "不做了",
+              "primary": false,
+              "needsText": false
+            }
+          ]
+        },
+        {
+          "id": "t-review",
+          "title": "S3 合成 t-review",
+          "version": 2,
+          "urgency": "normal",
+          "stage": "review",
+          "group": "waiting",
+          "reason": "做完了，等你验收",
+          "who": "",
+          "workspacePath": "<workspace>",
+          "workspaceLabel": "<workspace-label>",
+          "needsWorkspace": false,
+          "question": null,
+          "actions": [
+            {
+              "action": "accept",
+              "label": "验收",
+              "primary": true,
+              "needsText": false
+            },
+            {
+              "action": "reject",
+              "label": "打回",
+              "primary": false,
+              "needsText": true
+            },
+            {
+              "action": "cancel",
+              "label": "不做了",
+              "primary": false,
+              "needsText": false
+            }
+          ]
+        },
+        {
+          "id": "t-stuck",
+          "title": "S3 合成 t-stuck",
+          "version": 2,
+          "urgency": "normal",
+          "stage": "stuck",
+          "group": "waiting",
+          "reason": "卡住了，需要你处理",
+          "who": "",
+          "workspacePath": "<workspace>",
+          "workspaceLabel": "<workspace-label>",
+          "needsWorkspace": false,
+          "question": null,
+          "actions": [
+            {
+              "action": "comment",
+              "label": "告诉它怎么办",
+              "primary": true,
+              "needsText": true
+            },
+            {
+              "action": "cancel",
+              "label": "不做了",
+              "primary": false,
+              "needsText": false
+            }
+          ]
+        }
+      ],
+      "running": [
+        {
+          "id": "t-working",
+          "title": "S3 合成 t-working",
+          "version": 2,
+          "urgency": "normal",
+          "stage": "working",
+          "group": "running",
+          "reason": "正在跑",
+          "who": "会话 …ed-1 · 400 天前有动静",
+          "workspacePath": "<workspace>",
+          "workspaceLabel": "<workspace-label>",
+          "needsWorkspace": false,
+          "question": null,
+          "actions": [
+            {
+              "action": "comment",
+              "label": "补一句",
+              "primary": true,
+              "needsText": true
+            },
+            {
+              "action": "cancel",
+              "label": "不做了",
+              "primary": false,
+              "needsText": false
+            }
+          ]
+        }
+      ],
+      "queued": [
+        {
+          "id": "t-queued",
+          "title": "S3 合成 t-queued",
+          "version": 2,
+          "urgency": "normal",
+          "stage": "queued",
+          "group": "queued",
+          "reason": "排队中",
+          "who": "",
+          "workspacePath": "<workspace>",
+          "workspaceLabel": "<workspace-label>",
+          "needsWorkspace": false,
+          "question": null,
+          "actions": [
+            {
+              "action": "start",
+              "label": "开始",
+              "primary": true,
+              "needsText": false
+            },
+            {
+              "action": "later",
+              "label": "以后再说",
+              "primary": false,
+              "needsText": false
+            }
+          ]
+        }
+      ],
+      "later": [
+        {
+          "id": "t-later",
+          "title": "S3 合成 t-later",
+          "version": 2,
+          "urgency": "normal",
+          "stage": "later",
+          "group": "later",
+          "reason": "以后再说",
+          "who": "",
+          "workspacePath": "<workspace>",
+          "workspaceLabel": "<workspace-label>",
+          "needsWorkspace": false,
+          "question": null,
+          "actions": [
+            {
+              "action": "queue",
+              "label": "排进去",
+              "primary": true,
+              "needsText": false
+            },
+            {
+              "action": "start",
+              "label": "现在就做",
+              "primary": false,
+              "needsText": false
+            }
+          ]
+        }
+      ],
+      "doneToday": []
+    },
+    "pending": [],
+    "workspaces": [
+      {
+        "path": "<workspace>",
+        "label": "<workspace-label>",
+        "lastUsedAt": 1760000000000,
+        "count": 7
+      }
+    ],
+    "defaultWorkspace": "<workspace>",
+    "cards": [
+      {
+        "id": "t-queued",
+        "title": "S3 合成 t-queued",
+        "version": 2,
+        "urgency": "normal",
+        "stage": "queued",
+        "group": "queued",
+        "reason": "排队中",
+        "who": "",
+        "workspacePath": "<workspace>",
+        "workspaceLabel": "<workspace-label>",
+        "needsWorkspace": false,
+        "question": null,
+        "actions": [
+          {
+            "action": "start",
+            "label": "开始",
+            "primary": true,
+            "needsText": false
+          },
+          {
+            "action": "later",
+            "label": "以后再说",
+            "primary": false,
+            "needsText": false
+          }
+        ]
+      },
+      {
+        "id": "t-working",
+        "title": "S3 合成 t-working",
+        "version": 2,
+        "urgency": "normal",
+        "stage": "working",
+        "group": "running",
+        "reason": "正在跑",
+        "who": "会话 …ed-1 · 400 天前有动静",
+        "workspacePath": "<workspace>",
+        "workspaceLabel": "<workspace-label>",
+        "needsWorkspace": false,
+        "question": null,
+        "actions": [
+          {
+            "action": "comment",
+            "label": "补一句",
+            "primary": true,
+            "needsText": true
+          },
+          {
+            "action": "cancel",
+            "label": "不做了",
+            "primary": false,
+            "needsText": false
+          }
+        ]
+      },
+      {
+        "id": "t-review",
+        "title": "S3 合成 t-review",
+        "version": 2,
+        "urgency": "normal",
+        "stage": "review",
+        "group": "waiting",
+        "reason": "做完了，等你验收",
+        "who": "",
+        "workspacePath": "<workspace>",
+        "workspaceLabel": "<workspace-label>",
+        "needsWorkspace": false,
+        "question": null,
+        "actions": [
+          {
+            "action": "accept",
+            "label": "验收",
+            "primary": true,
+            "needsText": false
+          },
+          {
+            "action": "reject",
+            "label": "打回",
+            "primary": false,
+            "needsText": true
+          },
+          {
+            "action": "cancel",
+            "label": "不做了",
+            "primary": false,
+            "needsText": false
+          }
+        ]
+      },
+      {
+        "id": "t-stuck",
+        "title": "S3 合成 t-stuck",
+        "version": 2,
+        "urgency": "normal",
+        "stage": "stuck",
+        "group": "waiting",
+        "reason": "卡住了，需要你处理",
+        "who": "",
+        "workspacePath": "<workspace>",
+        "workspaceLabel": "<workspace-label>",
+        "needsWorkspace": false,
+        "question": null,
+        "actions": [
+          {
+            "action": "comment",
+            "label": "告诉它怎么办",
+            "primary": true,
+            "needsText": true
+          },
+          {
+            "action": "cancel",
+            "label": "不做了",
+            "primary": false,
+            "needsText": false
+          }
+        ]
+      },
+      {
+        "id": "t-later",
+        "title": "S3 合成 t-later",
+        "version": 2,
+        "urgency": "normal",
+        "stage": "later",
+        "group": "later",
+        "reason": "以后再说",
+        "who": "",
+        "workspacePath": "<workspace>",
+        "workspaceLabel": "<workspace-label>",
+        "needsWorkspace": false,
+        "question": null,
+        "actions": [
+          {
+            "action": "queue",
+            "label": "排进去",
+            "primary": true,
+            "needsText": false
+          },
+          {
+            "action": "start",
+            "label": "现在就做",
+            "primary": false,
+            "needsText": false
+          }
+        ]
+      },
+      {
+        "id": "t-done",
+        "title": "S3 合成 t-done",
+        "version": 2,
+        "urgency": "normal",
+        "stage": "closed",
+        "group": "doneToday",
+        "reason": "已完成",
+        "who": "",
+        "workspacePath": "<workspace>",
+        "workspaceLabel": "<workspace-label>",
+        "needsWorkspace": false,
+        "question": null,
+        "actions": []
+      },
+      {
+        "id": "t-failed",
+        "title": "S3 合成 t-failed",
+        "version": 2,
+        "urgency": "normal",
+        "stage": "not_started",
+        "group": "waiting",
+        "reason": "没启动：合成启动失败",
+        "who": "",
+        "workspacePath": "<workspace>",
+        "workspaceLabel": "<workspace-label>",
+        "needsWorkspace": false,
+        "question": null,
+        "actions": [
+          {
+            "action": "retry",
+            "label": "再试一次",
+            "primary": true,
+            "needsText": false
+          },
+          {
+            "action": "cancel",
+            "label": "不做了",
+            "primary": false,
+            "needsText": false
+          }
+        ]
+      }
+    ]
+  },
+  "stages": {
+    "t-queued": "queued",
+    "t-working": "working",
+    "t-review": "review",
+    "t-stuck": "stuck",
+    "t-later": "later",
+    "t-done": "closed",
+    "t-failed": "not_started"
+  }
+}
