@@ -16,34 +16,44 @@ const { stageOf, buildCardDetail } = await import('../lib/viewmodel.js')
 const file = process.env.DSH_SUPERAGENT_LEDGER
 const clean = () => fs.rmSync(dir, { recursive: true, force: true })
 const req = (id, action, payload) => applyRequest({ id, action, payload })
+const versionOf = taskId => getTask(taskId, { file }).version
+const externalChecklist = (id, taskId, items, extra = {}) => req(id, 'checklist', {
+  id: taskId, items, ifVersion: versionOf(taskId), ...extra,
+})
+const externalCheck = (id, taskId, extra = {}) => req(id, 'check', {
+  id: taskId, ifVersion: versionOf(taskId), ...extra,
+})
 const externalReport = (id, taskId, extra = {}) => req(id, 'report', {
-  id: taskId, summary: '外部做完', outcome: 'ready', checks: ['node test'], ...extra,
+  id: taskId, summary: '外部做完', outcome: 'ready', checks: ['node test'],
+  ifVersion: versionOf(taskId), ...extra,
 })
 
 // 1. checklist: empty task success, existing/0/9 reject.
 const c1 = createTask({ title: '外部清单', workspacePath: dir }, { file })
-assert.equal(req('r-c1', 'checklist', { id: c1.id, items: ['一', '二'] }).ok, true)
-assert.match(req('r-c2', 'checklist', { id: c1.id, items: ['三'] }).error, /已经有验收清单/)
+assert.equal(externalChecklist('r-c1', c1.id, ['一', '二']).ok, true)
+assert.match(req('r-c2', 'checklist', {
+  id: c1.id, items: ['三'], ifVersion: versionOf(c1.id),
+}).error, /已经有验收清单/)
 const c2 = createTask({ title: '外部空清单', workspacePath: dir }, { file })
-assert.match(req('r-c3', 'checklist', { id: c2.id, items: [] }).error, /至少 1 条/)
-assert.match(req('r-c4', 'checklist', { id: c2.id, items: Array.from({ length: 9 }, (_, i) => `项${i}`) }).error, /最多 8 条/)
+assert.match(externalChecklist('r-c3', c2.id, []).error, /至少 1 条/)
+assert.match(externalChecklist('r-c4', c2.id, Array.from({ length: 9 }, (_, i) => `项${i}`)).error, /最多 8 条/)
 
 // 2. ready gate: unchecked, missing note, missing checks; card unchanged each time.
 const g = createTask({ title: '外部门槛', workspacePath: dir }, { file })
-req('r-g1', 'checklist', { id: g.id, items: ['第一项', '第二项'] })
+externalChecklist('r-g1', g.id, ['第一项', '第二项'])
 const before = () => JSON.stringify(getTask(g.id, { file }))
 let snap = before()
 let bad = externalReport('r-g2', g.id)
 assert.equal(bad.ok, false); assert.match(bad.error, /第 1、2 项没勾/); assert.equal(before(), snap)
 const items = getTask(g.id, { file }).checklist
-req('r-g3', 'check', { id: g.id, itemId: items[0].id })
+externalCheck('r-g3', g.id, { itemId: items[0].id })
 snap = before()
 bad = externalReport('r-g4', g.id)
 assert.equal(bad.ok, false); assert.match(bad.error, /没写怎么验的|第 2 项没勾/); assert.equal(before(), snap)
 
 // 3. complete and hand in; report by mcp; detail labels it.
-req('r-g5', 'check', { id: g.id, itemId: items[0].id, note: '已核对' })
-req('r-g6', 'check', { id: g.id, index: 1, note: '已核对', evidence: ['proof.txt'] })
+externalCheck('r-g5', g.id, { itemId: items[0].id, note: '已核对' })
+externalCheck('r-g6', g.id, { index: 1, note: '已核对', evidence: ['proof.txt'] })
 const ready = externalReport('r-g7', g.id)
 assert.equal(ready.ok, true, ready.error)
 const handed = getTask(g.id, { file })
@@ -56,9 +66,11 @@ const active = createTask({ title: '有人在跑', workspacePath: dir, checklist
 const run = beginDispatch(active.id, { sessionId: 'session-active', messageId: 'm-active', text: '做', cwd: dir }, { file })
 const activeBefore = JSON.stringify(getTask(active.id, { file }))
 for (const [id, action, payload] of [
-  ['r-a1', 'checklist', { id: active.id, items: ['外部补'] }],
-  ['r-a2', 'check', { id: active.id, index: 0, note: '外部勾' }],
-  ['r-a3', 'report', { id: active.id, summary: '外部交', outcome: 'ready', checks: ['x'] }],
+  ['r-a1', 'checklist', { id: active.id, items: ['外部补'], ifVersion: versionOf(active.id) }],
+  ['r-a2', 'check', { id: active.id, index: 0, note: '外部勾', ifVersion: versionOf(active.id) }],
+  ['r-a3', 'report', {
+    id: active.id, summary: '外部交', outcome: 'ready', checks: ['x'], ifVersion: versionOf(active.id),
+  }],
 ]) {
   const result = req(id, action, payload)
   assert.equal(result.ok, false)
@@ -83,7 +95,10 @@ assert.equal(stageOf(rejected.task, { effects: [] }).stage, 'queued')
 const qdir = path.join(dir, 'taskboard-queue')
 fs.mkdirSync(qdir, { recursive: true })
 const qtask = createTask({ title: '重放', workspacePath: dir }, { file })
-const request = { id: 'r-replay', action: 'checklist', payload: { id: qtask.id, items: ['一次'] } }
+const request = {
+  id: 'r-replay', action: 'checklist',
+  payload: { id: qtask.id, items: ['一次'], ifVersion: qtask.version },
+}
 fs.writeFileSync(path.join(qdir, 'requests.jsonl'), JSON.stringify(request) + '\n')
 const first = consumeQueue()
 assert.equal(first.length, 1); assert.equal(first[0].ok, true)
@@ -111,10 +126,11 @@ assert.ok(run.assignment.id)
   const qdir2 = path.join(dir, 'taskboard-queue')
   fs.rmSync(path.join(qdir2, 'requests.jsonl'), { force: true })
   fs.rmSync(path.join(qdir2, 'results.jsonl'), { force: true })
+  const v0 = replayTask.version
   const rows = [
-    { id: 'r-lost-1', action: 'checklist', payload: { id: replayTask.id, items: ['唯一一项'] } },
-    { id: 'r-lost-2', action: 'check', payload: { id: replayTask.id, index: 0, note: '已验' } },
-    { id: 'r-lost-3', action: 'report', payload: { id: replayTask.id, summary: '交', outcome: 'ready', checks: ['x'] } },
+    { id: 'r-lost-1', action: 'checklist', payload: { id: replayTask.id, items: ['唯一一项'], ifVersion: v0 } },
+    { id: 'r-lost-2', action: 'check', payload: { id: replayTask.id, index: 0, note: '已验', ifVersion: v0 + 1 } },
+    { id: 'r-lost-3', action: 'report', payload: { id: replayTask.id, summary: '交', outcome: 'ready', checks: ['x'], ifVersion: v0 + 2 } },
   ]
   fs.writeFileSync(path.join(qdir2, 'requests.jsonl'), rows.map(row => JSON.stringify(row)).join('\n') + '\n')
   const applied = consumeQueue()
@@ -123,10 +139,12 @@ assert.ok(run.assignment.id)
   assert.equal(applied.find(row => row.action === 'checklist').items, 1, '第一次回执带清单数量')
   assert.ok(applied.find(row => row.action === 'check').itemId, '第一次回执带勾选 item ID')
   assert.equal(applied.find(row => row.action === 'report').status, 'in_review', '第一次回执带当时的卡状态')
+  const atById = new Map(applied.map(row => [row.id, row.at]))
   const handed = getTask(replayTask.id, { file })
   assert.equal(handed.mcpRequests['r-lost-1'].receipt.items, 1, '回执和清单写入同一次落盘')
   assert.equal(handed.mcpRequests['r-lost-2'].receipt.itemId, handed.checklist[0].id)
   assert.equal(handed.mcpRequests['r-lost-3'].receipt.status, 'in_review')
+  assert.equal(handed.mcpRequests['r-lost-3'].receipt.at, atById.get('r-lost-3'), '回执保存原始 at')
   const executions = handed.executions.length
   const revision = readLedger(file).revision
   fs.rmSync(path.join(qdir2, 'results.jsonl'), { force: true })
@@ -134,6 +152,7 @@ assert.ok(run.assignment.id)
   assert.equal(replay.length, 3)
   assert.ok(replay.every(row => row.duplicate === true))
   assert.equal(replay.find(row => row.action === 'report').status, 'in_review', '重放回到原回执状态')
+  for (const row of replay) assert.equal(row.at, atById.get(row.id), '重放返回原始 at')
   assert.equal(getTask(replayTask.id, { file }).executions.length, executions, '重放不得追加执行记录')
   assert.equal(readLedger(file).revision, revision, '重放不得再写台账')
 }
@@ -144,28 +163,33 @@ assert.ok(run.assignment.id)
   fs.rmSync(path.join(queueDir, 'requests.jsonl'), { force: true })
   fs.rmSync(path.join(queueDir, 'results.jsonl'), { force: true })
   const rejectedTask = createTask({ title: '打回后重放原报告', workspacePath: dir }, { file })
+  const rv = rejectedTask.version
   const rows = [
-    { id: 'r-rej-1', action: 'checklist', payload: { id: rejectedTask.id, items: ['唯一一项'] } },
-    { id: 'r-rej-2', action: 'check', payload: { id: rejectedTask.id, index: 0, note: '已验' } },
-    { id: 'r-rej-3', action: 'report', payload: { id: rejectedTask.id, summary: '交', outcome: 'ready', checks: ['x'] } },
+    { id: 'r-rej-1', action: 'checklist', payload: { id: rejectedTask.id, items: ['唯一一项'], ifVersion: rv } },
+    { id: 'r-rej-2', action: 'check', payload: { id: rejectedTask.id, index: 0, note: '已验', ifVersion: rv + 1 } },
+    { id: 'r-rej-3', action: 'report', payload: { id: rejectedTask.id, summary: '交', outcome: 'ready', checks: ['x'], ifVersion: rv + 2 } },
   ]
   fs.writeFileSync(path.join(queueDir, 'requests.jsonl'), rows.map(row => JSON.stringify(row)).join('\n') + '\n')
   const first = consumeQueue()
   assert.equal(first.length, 3)
   assert.ok(first.every(row => row.duplicate === false), '首次交活不是重放')
+  const firstReportAt = first.find(row => row.action === 'report').at
   assert.equal(getTask(rejectedTask.id, { file }).status, 'in_review')
 
   const rejected = rejectTask(rejectedTask.id, '用户打回', { file }).task
   assert.equal(rejected.status, 'todo')
   const before = JSON.stringify(getTask(rejectedTask.id, { file }))
   const revision = readLedger(file).revision
+  assert.ok(getTask(rejectedTask.id, { file }).version > rv + 2, '打回后卡版本已前进')
 
   fs.rmSync(path.join(queueDir, 'results.jsonl'), { force: true })
   fs.writeFileSync(path.join(queueDir, 'requests.jsonl'), JSON.stringify(rows[2]) + '\n')
   const replay = consumeQueue()
   assert.equal(replay.length, 1)
   assert.equal(replay[0].duplicate, true)
+  assert.equal(replay[0].ok, true, '已完成 ID 先于当前版本判断')
   assert.equal(replay[0].status, 'in_review', '重放只读原回执，不拿当前 todo 冒充')
+  assert.equal(replay[0].at, firstReportAt, '重放返回原始 at')
   assert.equal(JSON.stringify(getTask(rejectedTask.id, { file })), before, '当前卡必须保持打回后的原样')
   assert.equal(readLedger(file).revision, revision, '重放不得写台账')
 }
@@ -185,6 +209,7 @@ assert.ok(run.assignment.id)
   const lateList = req('r-v-1b', 'checklist', { id: versioned.id, items: ['另一套'], ifVersion: v1 })
   assert.equal(lateList.ok, false, '同一个 ifVersion 的后写清单不能覆盖')
   assert.match(lateList.error, /version conflict/)
+  assert.match(lateList.error, /ifVersion 已过期/)
   assert.deepEqual(getTask(versioned.id, { file }).checklist.map(item => item.text), ['一', '二'])
 
   const [item0, item1] = afterList.checklist
@@ -201,6 +226,7 @@ assert.ok(run.assignment.id)
   })
   assert.equal(lateCheck.ok, false, '同一个 ifVersion 的后写不能覆盖')
   assert.match(lateCheck.error, /version conflict/)
+  assert.match(lateCheck.error, /ifVersion 已过期/)
   assert.equal(getTask(versioned.id, { file }).checklist[1].checked, false, '后写失败不得改到第二项')
 
   // 原生勾选仍按原策略只改内容、不动版本；只有外部路径占版本。
@@ -236,7 +262,7 @@ assert.ok(run.assignment.id)
   const row = {
     id: 'r-dup-batch',
     action: 'checklist',
-    payload: { id: duplicateTask.id, items: ['一'] },
+    payload: { id: duplicateTask.id, items: ['一'], ifVersion: duplicateTask.version },
   }
   fs.writeFileSync(path.join(queueDir, 'requests.jsonl'), [row, row].map(item => JSON.stringify(item)).join('\n') + '\n')
   const applied = consumeQueue()
@@ -247,6 +273,112 @@ assert.ok(run.assignment.id)
     .split('\n').filter(Boolean).map(line => JSON.parse(line))
   assert.equal(resultRows.filter(item => item.id === row.id).length, 1, '结果文件只写一条')
   assert.equal(getTask(duplicateTask.id, { file }).mcpRequests[row.id].receipt.items, 1)
+}
+
+// 11.5 两笔对同一卡、带同一个卡版本的写同批消费：第一笔成功，后到按版本拒绝。
+{
+  const queueDir = path.join(dir, 'taskboard-queue')
+  fs.rmSync(path.join(queueDir, 'requests.jsonl'), { force: true })
+  fs.rmSync(path.join(queueDir, 'results.jsonl'), { force: true })
+  const pair = createTask({ title: '同版本两笔', workspacePath: dir }, { file })
+  const rows = [
+    {
+      id: 'r-pair-1', action: 'checklist',
+      payload: { id: pair.id, items: ['一', '二'], ifVersion: pair.version },
+    },
+    {
+      id: 'r-pair-2', action: 'check',
+      payload: { id: pair.id, index: 0, note: '第一笔', ifVersion: pair.version },
+    },
+  ]
+  fs.writeFileSync(path.join(queueDir, 'requests.jsonl'), rows.map(row => JSON.stringify(row)).join('\n') + '\n')
+  const applied = consumeQueue()
+  assert.equal(applied.length, 2)
+  assert.equal(applied[0].ok, true, applied[0].error)
+  assert.equal(applied[1].ok, false, '后到的一笔必须按卡版本拒绝')
+  assert.match(applied[1].error, /ifVersion 已过期/)
+  const after = getTask(pair.id, { file })
+  assert.equal(after.checklist.length, 2)
+  assert.equal(after.checklist[0].checked, false, '后到的一笔不得覆盖已写证据')
+  assert.equal(after.version, pair.version + 1, '只占第一笔的版本')
+  assert.ok(after.mcpRequests['r-pair-1'])
+  assert.equal(after.mcpRequests['r-pair-2'], undefined)
+}
+
+// 12. 宿主消费必须带非负整数版本；缺失/非法/过期都不落卡，成功后重新读取再写。
+{
+  const queueDir = path.join(dir, 'taskboard-queue')
+  fs.rmSync(path.join(queueDir, 'requests.jsonl'), { force: true })
+  fs.rmSync(path.join(queueDir, 'results.jsonl'), { force: true })
+  const strict = createTask({ title: '版本必填', workspacePath: dir }, { file })
+  const v0 = strict.version
+  const snapshot = () => JSON.stringify(getTask(strict.id, { file }))
+  const before = snapshot()
+
+  for (const [label, payload] of [
+    ['missing', { id: strict.id, items: ['一'] }],
+    ['string', { id: strict.id, items: ['一'], ifVersion: String(v0) }],
+    ['fraction', { id: strict.id, items: ['一'], ifVersion: v0 + 0.5 }],
+    ['negative', { id: strict.id, items: ['一'], ifVersion: -1 }],
+  ]) {
+    const result = req(`r-strict-list-${label}`, 'checklist', payload)
+    assert.equal(result.ok, false, label)
+    assert.match(result.error, /ifVersion/, `${label}: ${result.error}`)
+  }
+  assert.equal(snapshot(), before, '缺/非法版本不得写卡')
+
+  const listed = req('r-strict-list-ok', 'checklist', {
+    id: strict.id, items: ['一', '二'], ifVersion: v0,
+  })
+  assert.equal(listed.ok, true, listed.error)
+  const v1 = getTask(strict.id, { file }).version
+  assert.equal(v1, v0 + 1)
+  const [item0, item1] = getTask(strict.id, { file }).checklist
+
+  for (const [label, payload] of [
+    ['missing', { id: strict.id, itemId: item0.id, note: '已验' }],
+    ['string', { id: strict.id, itemId: item0.id, note: '已验', ifVersion: String(v1) }],
+    ['fraction', { id: strict.id, itemId: item0.id, note: '已验', ifVersion: v1 + 0.5 }],
+    ['negative', { id: strict.id, itemId: item0.id, note: '已验', ifVersion: -1 }],
+  ]) {
+    const result = req(`r-strict-check-${label}`, 'check', payload)
+    assert.equal(result.ok, false, label)
+    assert.match(result.error, /ifVersion/)
+  }
+  assert.equal(getTask(strict.id, { file }).checklist[0].checked, false)
+
+  const stale = req('r-strict-check-stale', 'check', {
+    id: strict.id, itemId: item1.id, note: '已验', ifVersion: v0,
+  })
+  assert.equal(stale.ok, false)
+  assert.match(stale.error, /version conflict/)
+  assert.match(stale.error, /ifVersion 已过期/)
+  assert.equal(getTask(strict.id, { file }).checklist[1].checked, false)
+
+  const checked = req('r-strict-check-ok', 'check', {
+    id: strict.id, itemId: item0.id, note: '已验', ifVersion: v1,
+  })
+  assert.equal(checked.ok, true, checked.error)
+  const v2 = getTask(strict.id, { file }).version
+  assert.equal(v2, v1 + 1)
+
+  for (const [label, payload] of [
+    ['missing', { id: strict.id, summary: '进行中', outcome: 'progress', checks: ['x'] }],
+    ['string', { id: strict.id, summary: '进行中', outcome: 'progress', checks: ['x'], ifVersion: String(v2) }],
+    ['fraction', { id: strict.id, summary: '进行中', outcome: 'progress', checks: ['x'], ifVersion: v2 + 0.5 }],
+    ['negative', { id: strict.id, summary: '进行中', outcome: 'progress', checks: ['x'], ifVersion: -1 }],
+  ]) {
+    const result = req(`r-strict-report-${label}`, 'report', payload)
+    assert.equal(result.ok, false, label)
+    assert.match(result.error, /ifVersion/)
+  }
+  assert.equal(getTask(strict.id, { file }).executions.length, 0)
+
+  const reported = req('r-strict-report-ok', 'report', {
+    id: strict.id, summary: '进行中', outcome: 'progress', checks: ['x'], ifVersion: v2,
+  })
+  assert.equal(reported.ok, true, reported.error)
+  assert.equal(getTask(strict.id, { file }).version, v2 + 1)
 }
 
 clean()

@@ -118,6 +118,7 @@ function getTask({ id } = {}) {
   const out = [];
   out.push(`# ${t.title}`);
   out.push(`- id: ${t.id}`);
+  out.push(`- version: ${Number.isInteger(t.version) && t.version >= 0 ? t.version : 0}`);
   out.push(`- 状态: ${t.status}${t.blocked ? '（受阻）' : ''}`);
   out.push(`- 项目: ${ws.get(t.workspaceId) || t.workspaceId}`);
   out.push(`- 紧急度: ${t.urgency || 'normal'}`);
@@ -164,6 +165,7 @@ const REQUESTS = path.join(QUEUE_DIR, 'requests.jsonl');
 const RESULTS = path.join(QUEUE_DIR, 'results.jsonl');
 
 const ACTIONS = new Set(['create', 'comment', 'move', 'pending', 'checklist', 'check', 'report']);
+const EVIDENCE_ACTIONS = new Set(['checklist', 'check', 'report']);
 
 function newRequestId() {
   return 'rq-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
@@ -178,7 +180,16 @@ function enqueue({ action, payload } = {}) {
   }
   if (action === 'comment' && (!payload.id || !payload.body)) throw new Error('comment 需要 payload.id 和 payload.body');
   if (action === 'move' && (!payload.id || !payload.status)) throw new Error('move 需要 payload.id 和 payload.status');
-  if (payload.ifVersion !== undefined && !Number.isInteger(payload.ifVersion)) throw new Error('ifVersion 必须是整数');
+  if (EVIDENCE_ACTIONS.has(action)) {
+    if (payload.ifVersion === undefined || payload.ifVersion === null) {
+      throw new Error(`${action} 需要 payload.ifVersion：先 board_get 读取 version，成功后重新 board_get 再写下一笔`);
+    }
+    if (!Number.isInteger(payload.ifVersion) || payload.ifVersion < 0) {
+      throw new Error(`${action} 的 payload.ifVersion 必须是非负整数（收到 ${String(payload.ifVersion)}）`);
+    }
+  } else if (payload.ifVersion !== undefined && !Number.isInteger(payload.ifVersion)) {
+    throw new Error('ifVersion 必须是整数');
+  }
   if (action === 'checklist' && (!payload.id || !Array.isArray(payload.items))) throw new Error('checklist 需要 payload.id 和 items 数组');
   if (action === 'check' && (!payload.id || (!payload.itemId && !Number.isInteger(payload.index)))) throw new Error('check 需要 payload.id，以及 itemId 或 index');
   if (action === 'check' && !String(payload.note || '').trim()) {
@@ -200,6 +211,9 @@ function enqueue({ action, payload } = {}) {
     `动作：${action}`,
     `队列文件：${REQUESTS}`,
     '写入由 DSH 内的 dsh-superagent 插件通过 fs.watch 实时消费，消费后可用 board_request_status 查结果。',
+    ...(EVIDENCE_ACTIONS.has(action)
+      ? ['成功后重新 board_get 读取新 version，再写下一笔；同版本两笔只有第一笔会被接受。']
+      : []),
   ].join('\n');
 }
 
@@ -258,7 +272,7 @@ const TOOLS = [
   },
   {
     name: 'board_get',
-    description: '读取一张卡的完整内容：描述、验收清单、评论、执行记录（只读）。',
+    description: '读取一张卡的完整内容：描述、验收清单、评论、执行记录和当前 version（只读）。checklist/check/report 写前先用它取 ifVersion；写成功后重新 board_get 读新 version 再写下一笔。',
     inputSchema: {
       type: 'object',
       properties: { id: { type: 'string', description: '任务 id，例如 t-mw9dgk7h-roj4ea' } },
@@ -278,14 +292,14 @@ const TOOLS = [
   },
   {
     name: 'board_request',
-    description: '提交一个写请求（建卡 / 投递待确认候选 / 评论 / 改状态 / 写清单 / 勾选 / 交活）。不直接写台账，先入队，由 DSH 内 dsh-superagent 插件实时监听消费。执行卡片时碰到工具阻碍或反复出现的环境问题，可以用 pending 投一条以 [Vent] 开头的话。',
+    description: '提交一个写请求（建卡 / 投递待确认候选 / 评论 / 改状态 / 写清单 / 勾选 / 交活）。不直接写台账，先入队，由 DSH 内 dsh-superagent 插件实时监听消费。checklist/check/report 必须带 board_get 返回的当前 version（非负整数）；写成功后重新 board_get 读新 version 再写下一笔，同版本两笔只有第一笔会被接受。create/pending/comment/move 保持旧行为，不需要 version。执行卡片时碰到工具阻碍或反复出现的环境问题，可以用 pending 投一条以 [Vent] 开头的话。',
     inputSchema: {
       type: 'object',
       properties: {
         action: { type: 'string', enum: ['create', 'pending', 'comment', 'move', 'checklist', 'check', 'report'] },
         payload: {
           type: 'object',
-          description: 'create: {title, description?, workspaceId?, workspacePath?, urgency?} | pending: {text, title?, workspaceId?, workspacePath?, by?} | comment: {id, body} | move: {id, status: todo|in_progress|backlog|canceled|archived}；交活用 report，不要 move 到 in_review/done | checklist: {id, items, ifVersion?} | check: {id, itemId 或 index, note（必填：写清这一项怎么验的；宿主交 ready 时逐项检查，缺 note 会被拒收）, evidence?, ifVersion?} | report: {id, summary, outcome, checks, changedFiles?, risk?, friction?, question?, ifVersion?}；report 的 dropped 不对接外部，交活必须 ready 且过清单门禁',
+          description: 'create: {title, description?, workspaceId?, workspacePath?, urgency?} | pending: {text, title?, workspaceId?, workspacePath?, by?} | comment: {id, body} | move: {id, status: todo|in_progress|backlog|canceled|archived}；交活用 report，不要 move 到 in_review/done | checklist: {id, items, ifVersion（必填：board_get 返回的当前版本，非负整数）} | check: {id, itemId 或 index, note（必填：写清这一项怎么验的；宿主交 ready 时逐项检查，缺 note 会被拒收）, evidence?, ifVersion（必填：board_get 返回的当前版本，非负整数）} | report: {id, summary, outcome, checks, changedFiles?, risk?, friction?, question?, ifVersion（必填：board_get 返回的当前版本，非负整数）}；三个证据动作成功后先重新 board_get 读新 version 再写下一笔；report 的 dropped 不对接外部，交活必须 ready 且过清单门禁',
         },
       },
       required: ['action', 'payload'],
