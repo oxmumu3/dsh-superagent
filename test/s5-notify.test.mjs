@@ -63,11 +63,13 @@ assert.equal(readNotify(file).notices.filter(row => row.state === 'sent').length
 const again = await runNotifyOnce({ file, now: now + 62_000, sender: async () => { throw new Error('must not resend') } })
 assert.equal(again.status, 'idle', '同一批不能因只列 5 件而重发剩下 4 件')
 
-// 安静时段跨午夜。
-assert.equal(isQuietAt(Date.UTC(2026, 10, 12, 15, 30), { from: '23:00', to: '08:00' }), true) // 23:30
-assert.equal(isQuietAt(Date.UTC(2026, 10, 12, 16, 0), { from: '23:00', to: '08:00' }), true) // 09:00? 1:00 UTC = 09:00 local
-assert.equal(isQuietAt(Date.UTC(2026, 10, 13, 0, 0), { from: '23:00', to: '08:00' }), false)
-assert.equal(isQuietAt(Date.UTC(2026, 10, 13, 0, 0), { from: '00:00', to: '00:00' }), false)
+// 安静时段按机器本地时间跨午夜。
+const quiet = { from: '23:00', to: '08:00' }
+const localTime = (date, hour, minute = 0) => new Date(2026, 10, date, hour, minute).getTime()
+assert.equal(isQuietAt(localTime(12, 23, 30), quiet), true)
+assert.equal(isQuietAt(localTime(13, 1), quiet), true)
+assert.equal(isQuietAt(localTime(13, 8), quiet), false)
+assert.equal(isQuietAt(localTime(13, 8), { from: '00:00', to: '00:00' }), false)
 
 // 脱敏。
 const clean = sanitizeNotifyText('key sk-abcdefghijklmnop Bearer abc.def.ghi ' + 'a'.repeat(40))
