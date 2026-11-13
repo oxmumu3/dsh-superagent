@@ -4,9 +4,17 @@
 
 维护者：牛村木木山。这是社区开源项目，不是 DeepSeek 官方产品。
 
-## 现在是什么状态
+## 安装公开预览版
 
-`0.2.0-preview.1` 是公开首发候选，面向 DeepSeek Harness `0.2.2-rc.2`。候选包还没发布到 npm，**不要把这个仓库当成已经可用的下载地址**；正式安装方式以发布页为准。发布时走 npm dist-tag `preview` 和 GitHub 预发布，不会占用 `latest`。
+[下载 Super Agent 0.2.0-preview.1](https://github.com/oxmumu3/dsh-superagent/releases/tag/v0.2.0-preview.1)。支持 DeepSeek Harness `0.2.2-rc.2`；已实测官方签名的 macOS Apple Silicon 版。其他宿主版本和系统尚未验证。
+
+下载发布页里的 `.tgz`，在 Harness 的「插件 → 添加插件 → 安装第三方插件」填入下载归档的绝对路径。也可以在桌面关闭后，使用同版本官方 CLI：
+
+```sh
+dsh plugin --profile desktop add /绝对路径/oxmumu3-dsh-superagent-0.2.0-preview.1.tgz
+```
+
+发布页附 SHA-256。请下载发布资产，GitHub 生成的源代码归档不是安装包。
 
 ## 第一次用
 
@@ -31,9 +39,9 @@
 - 不是 DeepSeek 单仓里那个研究原型；这是独立的社区插件，代码、台账和安装方式都独立。
 - 不承诺全网唯一，也不承诺未在此版本验证过的能力。
 
-## 安装与升级
+## 升级和卸载
 
-预览候选尚未发布。正式版本发布后，安装、升级和回退都以发布页的说明为准；`preview` 标签与 GitHub 预发布先于 `latest` 出现，不要把预览候选当成稳定版。在此之前，请只在自己的隔离 Harness 实例里验证源码，不要装进日常使用的 profile。
+在 Harness 插件页卸载旧版后再安装新版。卸载不会删除本地任务台账，也不会删除执行会话写入所选工作目录的文件。
 
 ## 开发与测试
 
