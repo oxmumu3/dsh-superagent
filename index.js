@@ -45,7 +45,8 @@ export function apply(ctx, config = {}) {
     }
   }
 
-  log(`loaded; queue=${requests}`)
+  const decisionAvailable = false
+  log(`loaded; queue=${requests}; decisionAvailable=${decisionAvailable}`)
 
   // The adapter is the only host-ABI surface. refs stays empty until the
   // services mount; every call explains what is missing instead of guessing.
@@ -53,6 +54,7 @@ export function apply(ctx, config = {}) {
   // S3：Router 与引擎互相需要；先用一个引用位接好 turn/end 通知，再建 Router。
   const routerRef = { current: null }
   const engine = createEngine({
+    decisionAvailable,
     adapter: createHostAdapter(refs, log),
     log,
     afterEvent: type => routerRef.current?.notify(type),
@@ -80,12 +82,12 @@ export function apply(ctx, config = {}) {
   const notifyTimer = setInterval(() => {
     if (notifyBusy) return
     notifyBusy = true
-    void runNotifyOnce({ file: engine.file, config, env: process.env, log })
+    void runNotifyOnce({ file: engine.file, config, env: process.env, log, decisionAvailable })
       .catch(error => log(`notify cycle failed: ${error instanceof Error ? error.message : String(error)}`))
       .finally(() => { notifyBusy = false })
   }, 10_000)
   if (typeof notifyTimer.unref === 'function') notifyTimer.unref()
-  try { recoverNotifyInFlight(engine.file); syncNotices({ file: engine.file }) } catch (error) { log(`notify sync skipped: ${error instanceof Error ? error.message : String(error)}`) }
+  try { recoverNotifyInFlight(engine.file); syncNotices({ file: engine.file, decisionAvailable }) } catch (error) { log(`notify sync skipped: ${error instanceof Error ? error.message : String(error)}`) }
 
   // Approval events are observed only: installSessionEvents never answers one.
   let disposeEvents
@@ -107,7 +109,7 @@ export function apply(ctx, config = {}) {
   // 0.2.2 mounts `tools` after the plugin's apply, so sampling ctx.get at
   // startup misses it and the executor never sees sa_report. Listen for the
   // service instead; keep one registration per mount and drop it on teardown.
-  const disposeToolRegistration = installToolRegistration(ctx, engine, log)
+  const disposeToolRegistration = installToolRegistration(ctx, engine, log, { decisionAvailable })
 
   // 公开首发的最小宿主修复：新执行会话要挂宿主默认 preset，否则只有宿主
   // 平面工具，write/sa_report 会 unknown tool。没有这个服务就保持原样。

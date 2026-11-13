@@ -1524,6 +1524,7 @@ window.__ModuleLoader__.load({
               rows.push(hh('article', { className: 'sa2-report', key: execution.id || ('e' + index) },
                 hh('div', { className: 'sa2-report-h' },
                   hh('b', null, outcomeText(execution.outcome)),
+                  execution.by === 'mcp' ? hh('span', { className: 'sa2-badge' }, '外部 Agent 交的') : null,
                   hh('span', null, formatAt(execution.at)),
                 ),
                 execution.summary ? hh('p', null, execution.summary) : null,
