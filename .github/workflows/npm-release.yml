@@ -75,7 +75,7 @@ jobs:
           BUILD_COMMIT: ${{ steps.source.outputs.sha }}
         run: |
           set -eu
-          node scripts/write-build-receipt.mjs dist
+          env -u GITHUB_SHA node scripts/write-build-receipt.mjs dist
           cd dist
           sha256sum ./*.tgz > ARCHIVE.sha256
           cat ARCHIVE.sha256
