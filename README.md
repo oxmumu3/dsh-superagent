@@ -6,7 +6,7 @@
 
 ## 安装公开预览版
 
-本预览支持 DeepSeek Harness `0.2.2-rc.2` 的 macOS Apple Silicon 版。其他宿主版本和系统尚未验证。[下载 Super Agent](https://github.com/oxmumu3/dsh-superagent/releases)。
+本预览支持 DeepSeek Harness `0.2.2-rc.2` 和 `0.2.2-rc.3` 的 macOS Apple Silicon 版。其他宿主版本和系统尚未验证。[下载 Super Agent](https://github.com/oxmumu3/dsh-superagent/releases)。
 
 下载发布页里的 `.tgz`，在 Harness 的「插件 → 添加插件 → 安装第三方插件」填入下载归档的绝对路径。也可以在桌面关闭后，使用同版本官方 CLI：
 
