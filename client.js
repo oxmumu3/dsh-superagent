@@ -17,6 +17,8 @@ window.__ModuleLoader__.load({
     var VIEW_URL = '/api/superagent/view'
     var ACTION_URL = '/api/superagent/action'
     var CARD_URL = '/api/superagent/card'
+    // S4：「打开会话」优先用宿主的 uiWorkspace；拿不到就退回复制会话编号。
+    var hostUi = { openSession: null, canOpen: false }
 
     function loadReact() {
       try {
@@ -229,6 +231,7 @@ window.__ModuleLoader__.load({
       '.sa2-report-h b{font-weight:600}.sa2-report-h span{margin-left:auto;font:11px/18px var(--sa2-mono);color:var(--sa2-ink4)}',
       '.sa2-check{display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:13px;color:var(--sa2-ink2)}',
       '.sa2-check i{flex:none;width:15px;height:15px;margin-top:3px;border:1px solid var(--sa2-line2);border-radius:4px;font:11px/13px var(--sa2-sans);text-align:center;color:var(--sa2-ok)}',
+      '.sa2-check code{font:11px/16px var(--sa2-mono);color:var(--sa2-ink3);border:1px solid var(--sa2-line);border-radius:5px;padding:0 4px;margin-left:6px}',
       '.sa2-comment{display:flex;gap:8px;margin-top:18px}',
       '.sa2-comment input{flex:1;min-width:0;height:34px;padding:0 12px;border:1px solid var(--sa2-line2);border-radius:999px;background:var(--sa2-card);outline:0}',
       '.sa2-pop{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.24)}',
@@ -256,6 +259,18 @@ window.__ModuleLoader__.load({
       '.sa2-split{display:flex;align-items:center;gap:10px;padding:16px 0 2px;font-size:12px;color:var(--sa2-ink3)}',
       '.sa2-split:before{content:"";flex:1;height:1px;background:var(--sa2-line)}',
       '.sa2-split span{flex:none}',
+      '.sa2-checklist{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:5px;font-size:12px;line-height:18px;color:var(--sa2-ink2)}',
+      '.sa2-checklist li{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}',
+      '.sa2-checklist .mark{color:var(--sa2-ink3)}',
+      '.sa2-checklist em{font-style:normal;color:var(--sa2-ink3)}',
+      '.sa2-checklist code{font:11px/16px var(--sa2-mono);color:var(--sa2-ink3);border:1px solid var(--sa2-line);border-radius:5px;padding:0 4px}',
+      '.sa2-rule{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;line-height:18px;color:var(--sa2-ink2)}',
+      '.sa2-rule span{flex:1}',
+      '.sa2-vents{margin-top:28px;padding-top:14px;border-top:1px solid var(--sa2-line)}',
+      '.sa2-rule-list{max-height:280px;overflow:auto;padding-right:4px}',
+      '.sa2-code{flex:none;margin-right:7px;font:11px/17px var(--sa2-mono);color:var(--sa2-ink3);letter-spacing:.02em}',
+      '.sa2-checkline{display:flex;align-items:center;gap:9px;margin-top:16px;font-size:13px;line-height:20px;color:var(--sa2-ink2);cursor:pointer}',
+      '.sa2-checkline input{width:16px;height:16px;margin:0;accent-color:var(--sa2-ink)}',
       '.sa2-toast{position:fixed;left:50%;bottom:28px;z-index:100;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:10px 16px;border-radius:999px;background:var(--sa2-ink);color:var(--sa2-bg);font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.18);animation:sa2slide .3s var(--sa2-ease)}',
       '.sa2-toast button{flex:none;color:var(--sa2-bg);border-bottom:1px solid color-mix(in srgb,var(--sa2-bg) 50%,transparent);white-space:nowrap}',
       '.sa2-toast span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
@@ -383,6 +398,9 @@ window.__ModuleLoader__.load({
         busy: null,
         picker: null,
         routerOpen: false,
+        quietDraft: null,
+        rememberReject: false,
+        ventsOpen: false,
         drawer: null,
         toast: null,
       })
@@ -424,7 +442,11 @@ window.__ModuleLoader__.load({
         var body = { action: action, id: id, version: card ? card.version : undefined }
         if (text !== undefined && text !== null && text !== '') body.text = text
         if (extra) Object.keys(extra).forEach(function (key) { body[key] = extra[key] })
-        patch({ busy: id, rowError: null, form: null, formText: '' })
+        // 提交中的同一表单要留住；只有非表单动作才收起已打开的表单。
+        var activeForm = S.form && S.form.id === id && S.form.action === action ? S.form : null
+        patch(activeForm
+          ? { busy: id, rowError: null }
+          : { busy: id, rowError: null, form: null, formText: '', rememberReject: false })
         return post(body).then(function (result) {
           if (result.ok) {
             patch(function () {
@@ -581,6 +603,45 @@ window.__ModuleLoader__.load({
         })
       }
 
+      function sessionShort8(id) {
+        var text = String(id || '')
+        return text ? '…' + text.slice(-8) : ''
+      }
+
+      function openSessionRow(card) {
+        var sessionId = String(card.sessionId || '')
+        if (hostUi.openSession) {
+          try {
+            var opened = hostUi.openSession(sessionId)
+            if (opened && typeof opened.catch === 'function') opened.catch(function () {})
+            return
+          } catch (error) {
+            // 跳不过去就退回复制。
+          }
+        }
+        var copied = false
+        try {
+          if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            var result = navigator.clipboard.writeText(sessionId)
+            if (result && typeof result.then === 'function') {
+              result.then(function () {
+                showToast('会话编号已复制：' + sessionId, null)
+              }).catch(function () {
+                showToast('会话编号：' + sessionId, null)
+              })
+            } else {
+              copied = true
+            }
+          }
+        } catch (error) {
+          copied = false
+        }
+        if (copied) showToast('会话编号已复制：' + sessionId, null)
+        else if (!(typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function')) {
+          showToast('会话编号：' + sessionId, null)
+        }
+      }
+
       function modeWord(mode) {
         return mode === 'auto' ? '自动中' : mode === 'off' ? '自动开工已关' : '观察中'
       }
@@ -608,6 +669,59 @@ window.__ModuleLoader__.load({
         }).catch(function (error) {
           patch({ busy: null, rowError: { id: 'router', message: String((error && error.message) || error) } })
         })
+      }
+
+      function notifySet(action, text) {
+        patch({ busy: 'notify', rowError: null })
+        post({ action: action, text: String(text) }).then(function (result) {
+          if (result.ok) {
+            patch({ view: result.data, busy: null, quietDraft: null })
+            return
+          }
+          patch({ busy: null, rowError: { id: 'notify', message: String((result.data && result.data.error) || '没有改成功') } })
+        }).catch(function (error) {
+          patch({ busy: null, rowError: { id: 'notify', message: String((error && error.message) || error) } })
+        })
+      }
+
+      function refreshWith(body) {
+        var area = String(body.action || '').indexOf('rule_') === 0 ? 'rules' : 'vents'
+        post(body).then(function (result) {
+          if (result.ok) patch({ view: result.data, rowError: null })
+          else patch({ rowError: { id: area, message: String((result.data && result.data.error) || '没有改成功') } })
+        }).catch(function (error) {
+          patch({ rowError: { id: area, message: String((error && error.message) || error) } })
+        })
+      }
+
+      function evidenceChips(files) {
+        return (Array.isArray(files) ? files : []).map(function (file) {
+          var text = String(file)
+          return hh('code', { key: text, title: text }, text.split('/').pop() || text)
+        })
+      }
+
+      function renderVents() {
+        var vents = (S.view && S.view.vents) || { count: 0, items: [] }
+        if (!vents.count) return null
+        return hh('div', { className: 'sa2-vents' },
+          hh('button', {
+            type: 'button', className: 'sa2-link',
+            onClick: function () { patch({ ventsOpen: !S.ventsOpen }) },
+          }, 'AGENT 吐槽 ' + vents.count + ' 条 ' + (S.ventsOpen ? '收起' : '展开')),
+          S.ventsOpen
+            ? hh('div', { className: 'sa2-rule-list' }, vents.items.map(function (vent) {
+                return hh('div', { className: 'sa2-rule', key: vent.id },
+                  hh('span', null, vent.text),
+                  hh('button', { type: 'button', className: 'sa2-link', onClick: function () { refreshWith({ action: 'vent_card', text: vent.id }) } }, '记成一件事'),
+                  hh('button', { type: 'button', className: 'sa2-link', onClick: function () { refreshWith({ action: 'vent_dismiss', text: vent.id }) } }, '知道了'),
+                )
+              }))
+            : null,
+          S.rowError && S.rowError.id === 'vents'
+            ? hh('p', { className: 'sa2-err' }, S.rowError.message)
+            : null,
+        )
       }
 
       function undo() {
@@ -675,11 +789,16 @@ window.__ModuleLoader__.load({
           patch({ rowError: { id: form.id, message: '先写一句再送出' } })
           return
         }
-        runAction(form.id, form.action, text).then(function (ok) {
+        var extra = form.action === 'reject' && S.rememberReject ? { remember: true } : undefined
+        var submitted = form
+        runAction(form.id, form.action, text, extra).then(function (ok) {
           if (ok) {
-            patch({ form: null, formText: '', rowError: null })
-          } else if (card) {
-            // rowError 已由 runAction 写；保留表单，用户可以改。
+            patch(function (prev) {
+              // 回调里的 S 是旧 render 闭包；按当前状态比较，旧请求不能抹另一个表单。
+              return prev.form === submitted
+                ? { form: null, formText: '', rememberReject: false, rowError: null }
+                : {}
+            })
           }
         })
       }
@@ -692,6 +811,7 @@ window.__ModuleLoader__.load({
             label: definition.label,
           },
           formText: definition.preset || '',
+          rememberReject: false,
           rowError: null,
         })
       }
@@ -863,9 +983,18 @@ window.__ModuleLoader__.load({
                 event.preventDefault()
                 submitForm()
               }
-              if (event.key === 'Escape') patch({ form: null, formText: '' })
+              if (event.key === 'Escape') patch({ form: null, formText: '', rememberReject: false })
             },
           }),
+          form.action === 'reject' && card.workspacePath
+            ? hh('label', { className: 'sa2-checkline', style: { marginTop: 8, width: '100%' } },
+                hh('input', {
+                  type: 'checkbox', checked: S.rememberReject,
+                  onChange: function (event) { patch({ rememberReject: event.target.checked }) },
+                }),
+                hh('span', null, '以后这个项目都按这条查'),
+              )
+            : null,
           hh('button', {
             type: 'button',
             className: 'sa2-btn pri',
@@ -875,7 +1004,7 @@ window.__ModuleLoader__.load({
           hh('button', {
             type: 'button',
             className: 'sa2-btn',
-            onClick: function () { patch({ form: null, formText: '' }) },
+            onClick: function () { patch({ form: null, formText: '', rememberReject: false }) },
           }, '取消'),
         )
       }
@@ -907,10 +1036,24 @@ window.__ModuleLoader__.load({
                 type: 'button',
                 className: 'sa2-title',
                 onClick: function () { openCard(card.id) },
-              }, card.title),
+              },
+                card.code ? hh('span', { className: 'sa2-code' }, card.code) : null,
+                card.title,
+              ),
               badge ? hh('span', { className: 'sa2-badge' }, badge) : null,
+              card.rejectCount ? hh('span', { className: 'sa2-badge' }, '打回过 ' + card.rejectCount + ' 次') : null,
             ),
             card.reason ? hh('p', { className: 'sa2-why' }, card.reason) : null,
+            card.checklist && card.checklist.length
+              ? hh('ul', { className: 'sa2-checklist' }, card.checklist.map(function (item) {
+                  return hh('li', { key: item.id },
+                    hh('span', { className: 'mark' }, item.checked ? '✓' : '○'),
+                    hh('span', null, item.text),
+                    item.note ? hh('em', null, item.note) : null,
+                    evidenceChips(item.evidence),
+                  )
+                }))
+              : null,
             meta.length ? hh('p', { className: 'sa2-meta' }, meta) : null,
             card.needsWorkspace ? hh('p', { className: 'sa2-nows' },
               '还没定在哪做 ',
@@ -926,6 +1069,15 @@ window.__ModuleLoader__.load({
               : null,
           ),
           hh('div', { className: 'sa2-acts' },
+            card.group === 'running' && card.sessionId
+              ? hh('button', {
+                  key: 'session',
+                  type: 'button',
+                  className: 'sa2-btn',
+                  title: card.sessionId,
+                  onClick: function () { openSessionRow(card) },
+                }, hostUi.canOpen ? '打开会话' : sessionShort8(card.sessionId))
+              : null,
             (card.actions || []).map(function (definition, index) {
               return renderAction(card, definition, index)
             }),
@@ -1123,6 +1275,7 @@ window.__ModuleLoader__.load({
       function renderRouterPop() {
         if (!S.routerOpen) return null
         var router = (S.view && S.view.router) || { mode: 'observe', maxRunning: 2 }
+        var notify = (S.view && S.view.notify) || { mode: 'off', quiet: { from: '23:00', to: '08:00' }, configured: false, status: 'off' }
         var modes = [
           { mode: 'off', label: '关' },
           { mode: 'observe', label: '观察' },
@@ -1158,8 +1311,90 @@ window.__ModuleLoader__.load({
                 onClick: function () { routerSet('router_limit', limit) },
               }, String(limit))
             })),
+            hh('label', { className: 'sa2-checkline' },
+              hh('input', {
+                type: 'checkbox',
+                checked: router.sameDir !== 'allow',
+                disabled: S.busy === 'router',
+                onChange: function (event) {
+                  routerSet('router_same_dir', event.target.checked ? 'wait' : 'allow')
+                },
+              }),
+              hh('span', null, '同一个目录同时只跑一件'),
+            ),
+            hh('label', { className: 'sa2-checkline' },
+              hh('input', {
+                type: 'checkbox',
+                checked: notify.mode === 'on',
+                disabled: S.busy === 'notify',
+                onChange: function (event) { notifySet('notify_mode', event.target.checked ? 'on' : 'off') },
+              }),
+              hh('span', null, '有事等我时发通知'),
+            ),
+            hh('p', { className: 'lead', style: { marginTop: 10 } }, '安静时段'),
+            hh('div', { className: 'sa2-checkline' },
+              hh('input', {
+                type: 'time',
+                value: (S.quietDraft || notify.quiet || { from: '23:00', to: '08:00' }).from,
+                disabled: S.busy === 'notify',
+                style: { width: 88 },
+                onChange: function (event) {
+                  var q = S.quietDraft || notify.quiet || { from: '23:00', to: '08:00' }
+                  patch({ quietDraft: { from: event.target.value, to: q.to } })
+                },
+              }),
+              hh('span', null, '到'),
+              hh('input', {
+                type: 'time',
+                value: (S.quietDraft || notify.quiet || { from: '23:00', to: '08:00' }).to,
+                disabled: S.busy === 'notify',
+                style: { width: 88 },
+                onChange: function (event) {
+                  var q = S.quietDraft || notify.quiet || { from: '23:00', to: '08:00' }
+                  patch({ quietDraft: { from: q.from, to: event.target.value } })
+                },
+              }),
+              hh('button', {
+                type: 'button',
+                className: 'sa2-link',
+                disabled: S.busy === 'notify',
+                onClick: function () {
+                  var q = S.quietDraft || notify.quiet || { from: '23:00', to: '08:00' }
+                  notifySet('notify_quiet', q.from + '-' + q.to)
+                },
+              }, '保存'),
+            ),
+            hh('p', { className: 'lead', style: { marginTop: 6 } },
+              notify.lastError
+                ? `上次没发出去：${notify.lastError}`
+                : notify.status === 'unconfigured'
+                  ? '还没配置发送方式'
+                  : notify.status === 'off'
+                    ? '通知关着'
+                    : notify.configured
+                      ? '已配置'
+                      : '还没配置发送方式'),
+            (function () {
+              var rules = (S.view && S.view.acceptanceRules) || { count: 0, items: [] }
+              return hh('div', { style: { marginTop: 16 } },
+                hh('p', { className: 'lead' }, '这个项目的规矩 ' + rules.count + ' 条'),
+                hh('div', { className: 'sa2-rule-list' }, rules.items.map(function (rule) {
+                  return hh('div', { className: 'sa2-rule', key: rule.id },
+                    hh('small', { className: 'sa2-sm' }, wsLabel(rule.workspacePath)),
+                    hh('span', null, rule.text),
+                    hh('button', {
+                      type: 'button', className: 'sa2-link',
+                      onClick: function () { refreshWith({ action: 'rule_delete', text: rule.id }) },
+                    }, '删'),
+                  )
+                })),
+                S.rowError && S.rowError.id === 'rules'
+                  ? hh('p', { className: 'sa2-err' }, S.rowError.message)
+                  : null,
+              )
+            })(),
             hh('p', { className: 'lead', style: { marginTop: 18 } },
-              '观察档只记「本来会开始」；自动档有空位就开工，手动点「开始」不受上限限制。'),
+              '观察档只记「本来会开始」；自动档有空位就开工，手动点「开始」不受上限和同目录限制。'),
             hh('div', { className: 'sa2-pop-foot' },
               hh('span', { className: 'grow' }),
               hh('button', {
@@ -1272,7 +1507,7 @@ window.__ModuleLoader__.load({
             rows.push(hh('div', { key: 'cl' }, detail.checklist.map(function (item) {
               return hh('div', { className: 'sa2-check', key: item.id },
                 hh('i', null, item.checked ? '✓' : ''),
-                hh('span', null, item.text, item.note ? hh('span', { className: 'sa2-sm' }, ' · ' + item.note) : null),
+                hh('span', null, item.text, item.note ? hh('span', { className: 'sa2-sm' }, ' · ' + item.note) : null, evidenceChips(item.evidence)),
               )
             })))
           }
@@ -1423,6 +1658,7 @@ window.__ModuleLoader__.load({
           hh('p', { className: 'sa2-under' }, '往下滑就是全部。点一格直接跳到那一组；滑下去以后，这五格会收成顶上的一条页签。'),
           renderTabs(),
           GROUPS.map(renderSection),
+          renderVents(),
         ),
         renderRouterPop(),
         renderPicker(),
@@ -1432,6 +1668,30 @@ window.__ModuleLoader__.load({
     }
 
     function apply(ctx) {
+      function bindUiWorkspace(service) {
+        if (service && typeof service.openSession === 'function') {
+          hostUi.openSession = id => service.openSession(id)
+          hostUi.canOpen = true
+        }
+      }
+      try {
+        bindUiWorkspace(ctx.get && ctx.get('uiWorkspace', false))
+      } catch (error) {
+        // 服务还没挂上，等注入。
+      }
+      try {
+        if (typeof ctx.inject === 'function') {
+          ctx.effect(() => ctx.inject(['uiWorkspace'], scope => {
+            bindUiWorkspace(scope && (scope.uiWorkspace || (scope.get && scope.get('uiWorkspace', false))))
+            return function () {
+              hostUi.openSession = null
+              hostUi.canOpen = false
+            }
+          }))
+        }
+      } catch (error) {
+        // 没有 uiWorkspace 就用复制编号的退路。
+      }
       ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
         name: 'main', key: PANEL_KEY,
       }, Panel)))

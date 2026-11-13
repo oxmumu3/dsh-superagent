@@ -5,6 +5,7 @@ import path from 'node:path'
 import { installCapture } from '../lib/capture.js'
 import { applyRequest } from '../lib/queue.js'
 import { registerTools } from '../lib/tools.js'
+import { beginDispatch, checkItem } from '../lib/ledger.js'
 import { describeDispatch } from '../lib/policy.js'
 import { createTask, getTask, listTasks } from '../lib/ledger.js'
 import { makeHarness } from './support/harness.mjs'
@@ -80,13 +81,16 @@ process.env.DSH_SUPERAGENT_LEDGER = path.join(dir, 'ledger.json')
   assert.ok(defs.has('sa_comment'))
   assert.ok(!defs.has('sa_dispatch'), 'sa_dispatch 在 index.js 接宿主')
 
-  const card = createTask({ title: '工具报告卡' })
+  const card = createTask({ title: '工具报告卡', checklist: ['跑通报告'] })
+  checkItem(card.id, card.checklist[0].id, { note: '工具已跑通' })
+  const run = beginDispatch(card.id, { sessionId: 'session-tool-report', messageId: 'msg-tool-report', text: 'x' }, {})
   const report = await defs.get('sa_report').execute({
     id: card.id,
     summary: '做完了',
     outcome: 'ready',
     question: { text: '还要不要加日志？' },
-  })
+    checks: ['node test'],
+  }, { sessionId: run.assignment.sessionId })
   const row = getTask(card.id)
   assert.equal(row.status, 'in_review')
   assert.equal(row.executions.at(-1).state, 'ready')

@@ -147,7 +147,7 @@ const creates = hw => hw.calls.filter(call => call.type === 'create').length
 // 三类各一张卡都进 nod，分组在「等你」，排在 review 之后；动作表正确。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const auto = { queue: { auto: true, by: 'user' } }
   const review = hw.task({ title: 'S3 合成：等验收', status: 'in_review' })
   const spend = hw.task({ title: 'S3 合成：付款', description: '给供应商付款', ...auto })
@@ -187,7 +187,7 @@ const creates = hw => hw.calls.filter(call => call.type === 'create').length
 // 点头：没空位时等，点头后有空位就开工；开场白写明批准范围。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 1 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 1 }, { file: hw.file })
   const card = hw.task({
     title: 'S3 合成：发布文章',
     description: '把稿子发布到公众号',
@@ -248,7 +248,7 @@ const creates = hw => hw.calls.filter(call => call.type === 'create').length
 // 以后再说 + 排进去：needsNod 不丢，回到 nod 继续等。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const card = hw.task({
     title: 'S3 合成：稍后付款',
     description: '付款买素材',

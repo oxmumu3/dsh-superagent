@@ -17,6 +17,7 @@ import { registerRoutes } from './lib/route.js'
 import { createEngine } from './lib/engine.js'
 import { createRouter } from './lib/router.js'
 import { onLedgerWrite } from './lib/ledger.js'
+import { recoverNotifyInFlight, resolveNotifyCommand, runNotifyOnce, syncNotices } from './lib/notify.js'
 import { createHostAdapter, installSessionEvents } from './lib/host.js'
 import { describeDispatch } from './lib/policy.js'
 import { judge } from './lib/eval.js'
@@ -31,7 +32,7 @@ function homeDir() {
   return override !== undefined && override.length > 0 ? path.resolve(override) : path.join(os.homedir(), '.dsh')
 }
 
-export function apply(ctx) {
+export function apply(ctx, config = {}) {
   const home = homeDir()
   const queueDir = path.join(home, 'taskboard-queue')
   const requests = path.join(queueDir, 'requests.jsonl')
@@ -72,6 +73,20 @@ export function apply(ctx) {
     log(`router watch unavailable: ${error instanceof Error ? error.message : String(error)}`)
   }
 
+  // S5：通知调度。只从环境变量/插件配置取发送命令，默认关闭；定时器只做
+  // 合并/限频/安静时段检查，不读任何外部账号。
+  const notifyCommand = resolveNotifyCommand({ env: process.env, config }).command
+  let notifyBusy = false
+  const notifyTimer = setInterval(() => {
+    if (notifyBusy) return
+    notifyBusy = true
+    void runNotifyOnce({ file: engine.file, config, env: process.env, log })
+      .catch(error => log(`notify cycle failed: ${error instanceof Error ? error.message : String(error)}`))
+      .finally(() => { notifyBusy = false })
+  }, 10_000)
+  if (typeof notifyTimer.unref === 'function') notifyTimer.unref()
+  try { recoverNotifyInFlight(engine.file); syncNotices({ file: engine.file }) } catch (error) { log(`notify sync skipped: ${error instanceof Error ? error.message : String(error)}`) }
+
   // Approval events are observed only: installSessionEvents never answers one.
   let disposeEvents
   try {
@@ -94,9 +109,8 @@ export function apply(ctx) {
   // service instead; keep one registration per mount and drop it on teardown.
   const disposeToolRegistration = installToolRegistration(ctx, engine, log)
 
-  // agentPresets is optional: when present, fresh executor sessions get the
-  // same mounted composition the official web host uses. A missing service
-  // leaves the old bare-create behavior instead of blocking agents.
+  // 公开首发的最小宿主修复：新执行会话要挂宿主默认 preset，否则只有宿主
+  // 平面工具，write/sa_report 会 unknown tool。没有这个服务就保持原样。
   try {
     ctx.inject(['agentPresets'], scope => {
       try {
@@ -147,7 +161,7 @@ export function apply(ctx) {
   try {
     ctx.inject(['connection'], scope => {
       try {
-        const off = registerRoutes(scope, { engine })
+        const off = registerRoutes(scope, { engine, notifyConfigured: Boolean(notifyCommand) })
         if (typeof off === 'function') {
           disposeRoute = off
           log('routes registered: /api/superagent/view, /api/superagent/action')
@@ -230,6 +244,7 @@ export function apply(ctx) {
     try { router.stop() } catch { /* ignore */ }
     try { disposeRouterWatch() } catch { /* ignore */ }
     try { clearInterval(patrolTimer) } catch { /* ignore */ }
+    try { clearInterval(notifyTimer) } catch { /* ignore */ }
     try { disposeEvents?.() } catch { /* ignore */ }
     try { disposeQueue?.() } catch { /* ignore */ }
     try { disposeTurnCapture?.() } catch { /* ignore */ }
@@ -251,7 +266,7 @@ export function apply(ctx) {
 // after apply, so a one-shot ctx.get at startup misses it. Wait for injection,
 // register once, and unregister both groups on teardown. A second injection
 // without teardown is ignored so a reload cannot leave duplicate tool names.
-export function installToolRegistration(ctx, engine, log = () => {}) {
+export function installToolRegistration(ctx, engine, log = () => {}, extra = {}) {
   let disposeTools
   let disposeDispatch
   const unregister = () => {
@@ -273,9 +288,9 @@ export function installToolRegistration(ctx, engine, log = () => {}) {
           log('tools already registered; skip duplicate')
           return undefined
         }
-        disposeTools = registerTools(tools, { engine })
+        disposeTools = registerTools(tools, { engine, ...extra })
         disposeDispatch = registerDispatchTool(tools, engine)
-        log('tools registered: sa_list, sa_get, sa_create, sa_move, sa_comment, sa_report, sa_check, sa_dispatch')
+        log('tools registered: sa_list, sa_get, sa_create, sa_move, sa_comment, sa_report, sa_check, sa_checklist, sa_dispatch')
         return unregister
       } catch (error) {
         log(`tool registration failed: ${error instanceof Error ? error.message : String(error)}`)

@@ -45,7 +45,7 @@ function makeSilent(hw, taskId) {
 // 观察档：记录「本来会催」，不投递、不写 nudgedAt。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'observe', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'observe', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const card = hw.task({ title: 'S3 合成：静默观察' })
   await hw.startConfirmed(card.id)
   const assignment = makeSilent(hw, card.id)
@@ -66,7 +66,7 @@ function makeSilent(hw, taskId) {
 // 自动档：催一次；再静默也不催，原因改成「催过一次，还是没交结果」。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const card = hw.task({ title: 'S3 合成：静默催一次' })
   await hw.startConfirmed(card.id)
   hw.state.autoConfirm = false // 让催促保持「已交给宿主、等确认」的状态
@@ -97,7 +97,7 @@ function makeSilent(hw, taskId) {
 // 催促投递后宿主确认了：卡回到在跑，不会连催。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const card = hw.task({ title: 'S3 合成：催了会醒' })
   await hw.startConfirmed(card.id)
   makeSilent(hw, card.id)
@@ -116,7 +116,7 @@ function makeSilent(hw, taskId) {
 // 没动静：running 超过 20 分钟 → stuck，带会话去处；新事件后回到 working。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const card = hw.task({ title: 'S3 合成：在跑但没动静' })
   const run = await hw.startConfirmed(card.id)
   const assignment = liveAssignment(hw, card.id)
@@ -144,7 +144,7 @@ function makeSilent(hw, taskId) {
 // 没动静的门槛可调；off 档不做这个判断（和 S2 一致）。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 2, stuckMinutes: 5 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2, stuckMinutes: 5 }, { file: hw.file })
   const card = hw.task({ title: 'S3 合成：五分钟门槛' })
   await hw.startConfirmed(card.id)
   const assignment = liveAssignment(hw, card.id)

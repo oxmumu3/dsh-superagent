@@ -17,6 +17,7 @@ import {
   writeLedger,
 } from '../../lib/ledger.js'
 import { buildView } from '../../lib/viewmodel.js'
+import { ensureEvidence } from './evidence-fixture.mjs'
 
 let sequence = 0
 
@@ -69,6 +70,10 @@ export function makeLedger(overrides = {}) {
   }
 
   function report(task, run, value) {
+    if ((value?.outcome ?? 'ready') === 'ready') {
+      ensureEvidence(task.id, file, { sessionId: run.sessionId })
+      return reportExecution(task.id, { checks: ['node test'], ...value }, { ...options, sessionId: run.sessionId })
+    }
     return reportExecution(task.id, value, { ...options, sessionId: run.sessionId })
   }
 

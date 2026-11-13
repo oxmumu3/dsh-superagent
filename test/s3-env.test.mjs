@@ -54,7 +54,7 @@ const createCalls = hw => hw.calls.filter(call => call.type === 'create').length
   for (let index = 0; index < 35; index += 1) {
     hw.task({ title: `S3 老卡 ${index}`, description: '导入的老待办' })
   }
-  updateRouter({ mode: 'auto', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const router = routerFor(hw)
 
   for (let round = 0; round < 10; round += 1) {
@@ -188,7 +188,7 @@ const createCalls = hw => hw.calls.filter(call => call.type === 'create').length
   assert.equal(observed.mode, 'observe')
   assert.equal(createCalls(hw), 0, '观察档不开工')
 
-  updateRouter({ mode: 'auto', maxRunning: 1 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 1 }, { file: hw.file })
   assert.equal(readRouter(hw.file).mode, 'auto')
   assert.equal(readRouter(hw.file).maxRunning, 1)
 
@@ -219,7 +219,7 @@ const createCalls = hw => hw.calls.filter(call => call.type === 'create').length
   assert.throws(() => updateRouter({ maxRunning: 6 }, { file: hw.file }), /1 到 5/)
   assert.throws(() => updateRouter({ maxRunning: 2.5 }, { file: hw.file }), /1 到 5/)
   assert.throws(() => updateRouter({ mode: 'always' }, { file: hw.file }), /unknown router mode/)
-  const written = updateRouter({ mode: 'observe', maxRunning: 3 }, { file: hw.file })
+  const written = updateRouter({ mode: 'observe', sameDir: 'allow', maxRunning: 3 }, { file: hw.file })
   assert.equal(written.mode, 'observe')
   assert.equal(written.maxRunning, 3)
   assert.ok(Number.isFinite(written.updatedAt))

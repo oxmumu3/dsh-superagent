@@ -22,6 +22,8 @@ export function makeHarness(overrides = {}) {
   const state = {
     failCreate: 0,
     failFollowup: 0,
+    // 测试用：resolveModel 在这个 promise 上停住，模拟「抢占后还没建会话」。
+    modelGate: null,
     autoConfirm: true,
     alive: true,
     running: undefined,
@@ -75,6 +77,7 @@ export function makeHarness(overrides = {}) {
       handles.delete(id)
     },
     async resolveModel() {
+      if (state.modelGate) await state.modelGate
       return state.model
     },
   }

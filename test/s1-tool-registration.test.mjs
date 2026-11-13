@@ -33,23 +33,23 @@ assert.match(logs.at(-1), /service missing/)
 const first = makeRegistry()
 const off = injector({ tools: first })
 assert.equal(typeof off, 'function')
-for (const name of ['sa_list', 'sa_get', 'sa_create', 'sa_move', 'sa_comment', 'sa_report', 'sa_check', 'sa_dispatch']) {
+for (const name of ['sa_list', 'sa_get', 'sa_create', 'sa_move', 'sa_comment', 'sa_report', 'sa_check', 'sa_checklist', 'sa_depend', 'sa_decide', 'sa_dispatch']) {
   assert.ok(first.names.has(name), `应注册 ${name}`)
 }
-assert.equal(first.names.size, 8)
+assert.equal(first.names.size, 11)
 
 // 没有卸载前再次注入：忽略，避免同名工具重复。
 const second = makeRegistry()
 injector({ tools: second })
 assert.equal(second.names.size, 0)
-assert.equal(first.names.size, 8)
+assert.equal(first.names.size, 11)
 assert.match(logs.at(-1), /skip duplicate/)
 
 // 卸载后注销干净，再次挂载能重新注册。
 off()
 assert.equal(first.names.size, 0)
 injector({ tools: second })
-assert.equal(second.names.size, 8)
+assert.equal(second.names.size, 11)
 
 // 插件整体卸载也要能收口（幂等）。
 dispose()

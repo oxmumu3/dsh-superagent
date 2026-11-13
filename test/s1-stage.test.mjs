@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { makeHarness } from './support/harness.mjs'
 import { reportExecution } from '../lib/ledger.js'
+import { ensureEvidence } from './support/evidence-fixture.mjs'
 
 // 4) turn/end 的六种 reason.kind：completed 的三种结果 + 其余五种都算卡住。
 {
@@ -10,7 +11,8 @@ import { reportExecution } from '../lib/ledger.js'
     const card = hw.task()
     hw.setTaskId(card.id)
     const run = await hw.startConfirmed(card.id)
-    reportExecution(card.id, { outcome: 'ready', summary: '做完了' }, { file: hw.file })
+    ensureEvidence(card.id, hw.file, { sessionId: run.sessionId })
+    reportExecution(card.id, { outcome: 'ready', summary: '做完了', checks: ['node test'] }, { file: hw.file })
     hw.turnEnd(run.sessionId, 'completed')
     const info = hw.stage(card.id)
     assert.equal(info.stage, 'review')
@@ -114,7 +116,8 @@ import { reportExecution } from '../lib/ledger.js'
   const card = hw.task()
   hw.setTaskId(card.id)
   const run = await hw.startConfirmed(card.id)
-  reportExecution(card.id, { outcome: 'ready', summary: '第一版' }, { file: hw.file })
+  ensureEvidence(card.id, hw.file)
+  reportExecution(card.id, { outcome: 'ready', summary: '第一版', checks: ['node test'] }, { file: hw.file })
   hw.turnEnd(run.sessionId, 'completed')
   assert.equal(hw.stage(card.id).stage, 'review')
 

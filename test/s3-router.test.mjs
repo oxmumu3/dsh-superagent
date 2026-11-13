@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict'
 import { setTimeout as delay } from 'node:timers/promises'
 import { makeHarness } from './support/harness.mjs'
+import { ensureEvidence } from './support/evidence-fixture.mjs'
 import { createRouter } from '../lib/router.js'
 import {
   claimRouterTasks,
@@ -37,7 +38,8 @@ async function finishAsReady(hw, taskId) {
   const task = getTask(taskId, { file: hw.file })
   const assignment = (task.assignments ?? []).filter(item => item.state !== 'ended').pop()
   assert.ok(assignment, '要有当前派工才能交报告')
-  reportExecution(taskId, { outcome: 'ready', summary: '合成完成' }, {
+  ensureEvidence(taskId, hw.file, { sessionId: assignment.sessionId })
+  reportExecution(taskId, { outcome: 'ready', summary: '合成完成', checks: ['node test'] }, {
     file: hw.file,
     sessionId: assignment.sessionId,
   })
@@ -75,7 +77,7 @@ function routesFor(engine) {
 // 上限 2、一张手动在跑、三张自动排队：一轮只开 1 张；那张跑完再开 1 张。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const manual = hw.task({ title: 'S3 合成：手动在跑' })
   await hw.startConfirmed(manual.id)
   const first = autoCard(hw, 'S3 合成：自动一', { queue: { auto: true, by: 'user', at: 1_000 } })
@@ -101,7 +103,7 @@ function routesFor(engine) {
 // 上限 1 与 5 分别正确；手动开始不受上限限制。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 1 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 1 }, { file: hw.file })
   autoCard(hw, 'S3 合成：上限一 1', { queue: { auto: true, at: 1 } })
   autoCard(hw, 'S3 合成：上限一 2', { queue: { auto: true, at: 2 } })
   const router = routerFor(hw)
@@ -115,7 +117,7 @@ function routesFor(engine) {
 
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 5 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 5 }, { file: hw.file })
   for (let index = 0; index < 5; index += 1) {
     autoCard(hw, `S3 合成：上限五 ${index}`, { queue: { auto: true, at: index + 1 } })
   }
@@ -130,7 +132,7 @@ function routesFor(engine) {
 
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 1 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 1 }, { file: hw.file })
   const one = hw.task({ title: 'S3 合成：手动 1' })
   const two = hw.task({ title: 'S3 合成：手动 2' })
   await hw.startConfirmed(one.id)
@@ -148,7 +150,7 @@ function routesFor(engine) {
 // 没目录、需要点头、以后再说、老卡四种都不开工，原因正确。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const noWorkspace = hw.task({
     title: 'S3 合成：没目录',
     workspacePath: null,
@@ -212,7 +214,7 @@ function routesFor(engine) {
 // 位置与原因：上限 1，三张自动，先开 1 张，余下排第 1、第 2。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 1 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 1 }, { file: hw.file })
   const cards = [0, 1, 2].map(index => autoCard(hw, `S3 合成：排队 ${index}`, {
     queue: { auto: true, at: index + 1 },
   }))
@@ -231,7 +233,7 @@ function routesFor(engine) {
 // 观察档：算得出、不开工，router.log 里的「本来会开始」条数等于空位数。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'observe', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'observe', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   const one = autoCard(hw, 'S3 合成：观察一', { queue: { auto: true, at: 1 } })
   const two = autoCard(hw, 'S3 合成：观察二', { queue: { auto: true, at: 2 } })
   autoCard(hw, 'S3 合成：观察三', { queue: { auto: true, at: 3 } })
@@ -259,7 +261,7 @@ function routesFor(engine) {
 // 并发：两次调度同时触发，同一张卡只开工一次；条件写失败的那一轮什么都不做。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 2 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 2 }, { file: hw.file })
   autoCard(hw, 'S3 合成：并发一', { queue: { auto: true, at: 1 } })
   autoCard(hw, 'S3 合成：并发二', { queue: { auto: true, at: 2 } })
   const router = routerFor(hw)
@@ -280,7 +282,7 @@ function routesFor(engine) {
 // 触发：turn/end 与 30 秒兜底定时器都能把调度叫起来。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 1 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 1 }, { file: hw.file })
   autoCard(hw, 'S3 合成：turn/end 触发', { queue: { auto: true, at: 1 } })
   const router = routerFor(hw, { debounceMs: 5 })
   const before = creates(hw)
@@ -293,7 +295,7 @@ function routesFor(engine) {
 
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 1 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 1 }, { file: hw.file })
   autoCard(hw, 'S3 合成：兜底定时器', { queue: { auto: true, at: 1 } })
   const router = routerFor(hw, { tickMs: 40, debounceMs: 60_000 })
   const before = creates(hw)
@@ -307,7 +309,7 @@ function routesFor(engine) {
 // 台账写入之后去抖一次：不靠手动 runOnce。
 {
   const hw = makeHarness()
-  updateRouter({ mode: 'auto', maxRunning: 1 }, { file: hw.file })
+  updateRouter({ mode: 'auto', sameDir: 'allow', maxRunning: 1 }, { file: hw.file })
   const router = routerFor(hw, { debounceMs: 10 })
   const { onLedgerWrite } = await import('../lib/ledger.js')
   const off = onLedgerWrite(file => {

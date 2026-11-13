@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { makeHarness, deferred } from './support/harness.mjs'
+import { ensureEvidence } from './support/evidence-fixture.mjs'
 import { reportExecution, patchAssignment } from '../lib/ledger.js'
 
 const pause = (ms = 5) => new Promise(resolve => setTimeout(resolve, ms))
@@ -241,7 +242,8 @@ const pause = (ms = 5) => new Promise(resolve => setTimeout(resolve, ms))
   const card = hw.task()
   hw.setTaskId(card.id)
   await hw.startConfirmed(card.id)
-  reportExecution(card.id, { outcome: 'ready', summary: '第一版' }, { file: hw.file })
+  ensureEvidence(card.id, hw.file)
+  reportExecution(card.id, { outcome: 'ready', summary: '第一版', checks: ['node test'] }, { file: hw.file })
   const before = hw.calls.filter(call => call.type === 'followup').length
 
   const gate = deferred()
@@ -344,7 +346,8 @@ const pause = (ms = 5) => new Promise(resolve => setTimeout(resolve, ms))
   const run = await hw.startConfirmed(card.id)
   const firstSession = run.sessionId
 
-  reportExecution(card.id, { outcome: 'ready', summary: '第一版做完了' }, { file: hw.file })
+  ensureEvidence(card.id, hw.file)
+  reportExecution(card.id, { outcome: 'ready', summary: '第一版做完了', checks: ['node test'] }, { file: hw.file })
   hw.turnEnd(firstSession, 'completed')
   assert.equal(hw.stage(card.id).stage, 'review')
 

@@ -8,6 +8,7 @@ import {
   pruneConfirmedEffects, readLedger, currentAssignment, createEffect,
 } from '../lib/ledger.js'
 import { buildView } from '../lib/viewmodel.js'
+import { ensureEvidence } from './support/evidence-fixture.mjs'
 
 function tempLedger() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 's1-ledger-'))
@@ -111,13 +112,15 @@ function tempLedger() {
   row = getTask(card.id, { file })
   assert.equal(row.blocked, true)
 
-  reportExecution(card.id, { outcome: 'ready', summary: '做完了' }, { file })
+  ensureEvidence(card.id, file)
+  reportExecution(card.id, { outcome: 'ready', summary: '做完了', checks: ['node test'] }, { file })
   row = getTask(card.id, { file })
   assert.equal(row.status, 'in_review')
   assert.equal(row.blocked, false)
   assert.equal(row.executions.at(-1).state, 'ready')
 
-  reportExecution(card.id, { summary: '老调用不带 outcome' }, { file })
+  ensureEvidence(card.id, file)
+  reportExecution(card.id, { summary: '老调用不带 outcome', checks: ['node test'] }, { file })
   row = getTask(card.id, { file })
   assert.equal(row.executions.at(-1).state, 'ready', '不传 outcome 当 ready')
   cleanup()
@@ -143,7 +146,8 @@ function tempLedger() {
   assert.equal(row.status, 'in_progress', '旧派工的报告不能把卡推到待验收')
   assert.equal(row.executions.at(-1).sessionId, 's1', '报告仍留在执行记录里')
 
-  reportExecution(card.id, { outcome: 'ready', summary: '当前会话报告' }, { file, sessionId: 's2' })
+  ensureEvidence(card.id, file, { sessionId: 's2' })
+  reportExecution(card.id, { outcome: 'ready', summary: '当前会话报告', checks: ['node test'] }, { file, sessionId: 's2' })
   row = getTask(card.id, { file })
   assert.equal(currentAssignment(row).id, promoted.assignment.id)
   assert.equal(currentAssignment(row).lastReport.outcome, 'ready')
@@ -157,7 +161,8 @@ function tempLedger() {
   const card = createTask({ title: '清报告', workspacePath: dir }, { file })
   const created = beginDispatch(card.id, { sessionId: 's1', messageId: 'm1', text: 'x', cwd: dir }, { file })
   confirmEffect(created.effect.id, { file })
-  reportExecution(card.id, { outcome: 'ready', summary: '第一版' }, { file })
+  ensureEvidence(card.id, file)
+  reportExecution(card.id, { outcome: 'ready', summary: '第一版', checks: ['node test'] }, { file })
   assert.ok(currentAssignment(getTask(card.id, { file })).lastReport)
 
   // 用公开接口造一条 deliver 动作，再确认。

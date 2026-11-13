@@ -112,16 +112,25 @@ function normalizeView(view, workspace) {
   copy.at = 0
   copy.revision = 0
   delete copy.router
+  delete copy.notify
   for (const rows of Object.values(copy.groups)) {
     for (const card of rows) {
       delete card.auto
       delete card.position
+      delete card.sessionId
+      delete card.rejectCount
+      delete card.checklist
     }
   }
   for (const card of copy.cards) {
     delete card.auto
     delete card.position
+    delete card.sessionId
+    delete card.rejectCount
+    delete card.checklist
   }
+  delete copy.acceptanceRules
+  delete copy.vents
   return copy
 }
 

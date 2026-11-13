@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { makeHarness } from './support/harness.mjs'
 import { handleAction, registerRoutes } from '../lib/route.js'
 import { reportExecution, getTask } from '../lib/ledger.js'
+import { ensureEvidence } from './support/evidence-fixture.mjs'
 
 // E. 用户动作：start / comment / answer / reject / accept / later / cancel / create。
 {
@@ -30,14 +31,16 @@ import { reportExecution, getTask } from '../lib/ledger.js'
   assert.equal(getTask(card.id, { file: hw.file }).openQuestion, null)
 
   // 回到待验收，再打回。
-  reportExecution(card.id, { outcome: 'ready', summary: '做完了' }, { file: hw.file })
+  ensureEvidence(card.id, hw.file)
+  reportExecution(card.id, { outcome: 'ready', summary: '做完了', checks: ['node test'] }, { file: hw.file })
   assert.equal(getTask(card.id, { file: hw.file }).status, 'in_review')
   await handleAction(hw.engine, { action: 'reject', id: card.id, text: '再改一版' })
   await hw.engine.whenIdle()
   assert.equal(getTask(card.id, { file: hw.file }).status, 'in_progress')
 
   // accept 移到 done，并结束派工。
-  reportExecution(card.id, { outcome: 'ready', summary: '再做完' }, { file: hw.file })
+  ensureEvidence(card.id, hw.file)
+  reportExecution(card.id, { outcome: 'ready', summary: '再做完', checks: ['node test'] }, { file: hw.file })
   await handleAction(hw.engine, { action: 'accept', id: card.id })
   const accepted = getTask(card.id, { file: hw.file })
   assert.equal(accepted.status, 'done')
