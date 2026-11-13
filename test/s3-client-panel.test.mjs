@@ -197,9 +197,11 @@ assert.ok(nodRow, 'nod 行要出现')
 assert.ok(textOf(nodRow).includes('要对外发，等你点头（命中：发布）'))
 assert.ok(textOf(nodRow).includes('可以做') && textOf(nodRow).includes('以后再说') && textOf(nodRow).includes('不做了'))
 
-// 待确认：带 suggestedTaskId 的按钮改成「补到那张卡上」，并写清补到哪张。
-assert.ok(allText.includes('补到那张卡上'))
-assert.ok(allText.includes('补到「发布稿」'))
+// 待确认默认收着：首屏只留计数入口，整句与动作要点开以后才铺出来。
+// 「补到那张卡上」的展开态由 test/s2-pending-rail.test.mjs 覆盖。
+assert.ok(allText.includes('待确认'))
+assert.ok(!allText.includes('补到那张卡上'))
+assert.ok(!allText.includes('补到「发布稿」'))
 
 // 档位弹层：三档与 1–5 件；点「自动」和「3」会分别发 router_mode / router_limit。
 assert.ok(allText.includes('自动开工'))
@@ -221,15 +223,10 @@ assert.deepEqual(fetchCalls.pop(), {
   body: { action: 'router_limit', text: '3' },
 })
 
-// 待确认的「补到那张卡上」发 pending_attach。
-const attachButton = elementsBy(tree, item => item.props && item.props.className
-  && item.props.className.indexOf('sa2-btn') === 0 && textOf(item) === '补到那张卡上')[0]
-assert.ok(attachButton)
-attachButton.props.onClick()
-assert.deepEqual(fetchCalls.pop(), {
-  url: '/api/superagent/action',
-  body: { action: 'pending_attach', id: 'p1' },
-})
+// 待确认的「补到那张卡上」在展开态发 pending_attach；
+// 默认折叠的展开/动作链路由 test/s2-pending-rail.test.mjs 覆盖。
+assert.ok(source.includes("pendingAttach(row.id)"))
+assert.ok(source.includes("post({ action: 'pending_attach', id: id })"))
 
 // 源码层面的回归：档位/上限动作名、分行样式都在。
 assert.ok(source.includes("routerSet('router_mode'"))

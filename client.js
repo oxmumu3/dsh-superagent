@@ -138,13 +138,26 @@ window.__ModuleLoader__.load({
       '.sa2-send:hover{opacity:.88}',
       '.sa2-send:disabled{opacity:.45;cursor:default}',
       '.sa2-say-note{margin:10px 4px 0;font-size:12px;color:var(--sa2-stuck)}',
-      '.sa2-inbox{margin-top:14px;padding:14px 18px;border:1px dashed color-mix(in srgb,var(--sa2-wait) 45%,var(--sa2-line2));border-radius:16px;background:color-mix(in srgb,var(--sa2-wait) 5%,transparent)}',
-      '.sa2-inbox h3{font:600 14px/22px var(--sa2-sans);color:var(--sa2-ink)}',
-      '.sa2-inbox h3 span{font-weight:400;color:var(--sa2-ink3)}',
-      '.sa2-inbox li{display:flex;align-items:center;gap:10px;padding-top:10px;font-size:13px;min-width:0}',
-      '.sa2-inbox q{flex:1;min-width:0;quotes:"「" "」";color:var(--sa2-ink)}',
-      '.sa2-inbox q::before{content:open-quote}.sa2-inbox q::after{content:close-quote}',
-      '.sa2-inbox small{color:var(--sa2-ink3);white-space:nowrap}',
+      // 待确认默认收成一条计数入口，放在「等你」后面；展开先看短预览。
+      '.sa2-pending{margin-top:28px;border:1px solid var(--sa2-line);border-radius:14px;background:var(--sa2-card);overflow:hidden}',
+      '.sa2-pending-head{display:flex;align-items:center;gap:9px;width:100%;padding:11px 14px;text-align:left}',
+      '.sa2-pending-head:hover{background:var(--sa2-hover)}',
+      '.sa2-pending-mark{display:inline-flex;align-items:center;justify-content:center;flex:none;width:18px;height:18px;border:1px dashed var(--sa2-ink3);border-radius:50%;font:600 11px/1 var(--sa2-mono);color:var(--sa2-ink3)}',
+      '.sa2-pending-name{flex:none;font-weight:600;font-size:13px;line-height:20px;color:var(--sa2-ink)}',
+      '.sa2-pending-n{flex:none;font:600 15px/20px var(--sa2-sans);color:var(--sa2-ink);font-variant-numeric:tabular-nums}',
+      '.sa2-pending-hint{flex:1;min-width:0;font-size:12px;line-height:18px;color:var(--sa2-ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.sa2-pending-go{flex:none;font-size:12px;color:var(--sa2-ink2);border-bottom:1px solid var(--sa2-line2)}',
+      '.sa2-pending-body{border-top:1px solid var(--sa2-line)}',
+      '.sa2-pending-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 12px;padding:12px 14px;border-bottom:1px solid var(--sa2-line)}',
+      '.sa2-pending-row:last-child{border-bottom:0}',
+      '.sa2-pending-main{flex:1 1 280px;min-width:0}',
+      '.sa2-pending-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:20px;color:var(--sa2-ink);overflow-wrap:anywhere}',
+      '.sa2-pending-row.is-full .sa2-pending-text{display:block;-webkit-line-clamp:unset;overflow:visible;white-space:pre-wrap}',
+      '.sa2-pending-meta{display:flex;align-items:center;gap:10px;margin-top:4px;font-size:11px;line-height:17px;color:var(--sa2-ink3);min-width:0}',
+      '.sa2-pending-meta small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.sa2-pending-open{flex:none;font-size:11px}',
+      '.sa2-pending-acts{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;flex:none;margin-left:auto}',
+      '.sa2-pending-foot{display:flex;justify-content:flex-end;padding:8px 14px;border-top:1px solid var(--sa2-line)}',
       '.sa2-field{display:grid;grid-template-columns:minmax(0,1.5fr) repeat(4,minmax(0,1fr));gap:1px;margin-top:24px;border:1px solid var(--sa2-line);border-radius:16px;background:var(--sa2-line);overflow:hidden}',
       '.sa2-zone{position:relative;min-width:0;padding:14px 16px;background:var(--sa2-card);text-align:left;transition:background .16s var(--sa2-ease)}',
       '.sa2-zone:hover{background:color-mix(in srgb,var(--sa2-ink) 4%,var(--sa2-card))}',
@@ -276,7 +289,7 @@ window.__ModuleLoader__.load({
       '.sa2-toast span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '@container sa2 (max-width:700px){.sa2-inner{padding:48px 16px 90px}.sa2-tabs{left:-16px;right:-16px;padding:8px 16px}.sa2-h1{font-size:23px;line-height:32px}.sa2-say{padding-left:18px}.sa2-say input{font-size:14px}.sa2-send{height:40px;padding:0 18px}}',
       '@container sa2 (max-width:640px){.sa2-field{grid-template-columns:repeat(5,minmax(0,1fr))}.sa2-zone{padding:10px 4px;text-align:center}.sa2-zone-k{flex-direction:column;align-items:center;gap:0;font-size:11px;line-height:16px}.sa2-zone-k b{font-size:20px;line-height:26px}.sa2-marks,.sa2-peek{display:none}.sa2-hint{display:none}.sa2-sec{margin-top:32px}.sa2-row.is-wait{margin:0 -8px;padding-left:8px;padding-right:8px}}',
-      '@container sa2 (max-width:560px){.sa2-say{flex-wrap:wrap;border-radius:20px;padding:10px 10px 10px 16px}.sa2-say input{flex:1 1 100%;height:36px}.sa2-chip{margin-left:2px}.sa2-send{margin-left:auto}.sa2-inbox li{flex-wrap:wrap;gap:6px 10px}.sa2-inbox q{flex-basis:100%}.sa2-inbox small{flex:1;white-space:normal}.sa2-sheet{padding:22px 18px 60px}}',
+      '@container sa2 (max-width:560px){.sa2-say{flex-wrap:wrap;border-radius:20px;padding:10px 10px 10px 16px}.sa2-say input{flex:1 1 100%;height:36px}.sa2-chip{margin-left:2px}.sa2-send{margin-left:auto}.sa2-pending-head{flex-wrap:wrap}.sa2-pending-hint{flex-basis:100%;order:3;white-space:normal}.sa2-pending-go{order:2;margin-left:auto}.sa2-pending-main{flex-basis:100%}.sa2-pending-acts{width:100%;justify-content:flex-start;margin-left:0}.sa2-sheet{padding:22px 18px 60px}}',
       '@container sa2 (max-width:460px){.sa2-row{grid-template-columns:18px minmax(0,1fr);align-items:start}.sa2-acts{grid-column:2;justify-content:flex-start;margin-top:8px}.sa2-form{grid-column:2}.sa2-err{grid-column:2}.sa2-form{flex-wrap:wrap}.sa2-form input{flex-basis:100%}.sa2-asg{grid-template-columns:1fr}.sa2-asg .st{justify-self:start}}',
       '@media (max-width:640px){.sa2-sheet{width:100%;border-left:0}.sa2-pop{padding:12px}.sa2-toast{bottom:18px}}',
       '@media (max-width:460px){.sa2-row{grid-template-columns:18px minmax(0,1fr)}.sa2-acts{grid-column:2;justify-content:flex-start;margin-top:8px}.sa2-form,.sa2-err{grid-column:2}}',
@@ -389,6 +402,10 @@ window.__ModuleLoader__.load({
         tab: 'waiting',
         scrolled: false,
         expanded: {},
+        // 待确认默认收着：真实积压几十条时，首屏先给「等你」让位。
+        pendingOpen: false,
+        pendingAll: false,
+        pendingFull: {},
         composer: '',
         composerWorkspace: undefined,
         composerError: null,
@@ -1241,34 +1258,99 @@ window.__ModuleLoader__.load({
         )
       }
 
-      function renderInbox() {
+      // 待确认：默认只留一条计数入口，放在「等你」后面；展开先看短预览，
+      // 原文按条再展开。它不是卡，不进五组、不动台账，只把已有的记录画出来。
+      function renderPendingRail() {
         var rows = (S.view && S.view.pending) || []
         if (!rows.length) return null
-        return hh('section', { className: 'sa2-inbox' },
-          hh('h3', null, '它听到 ' + rows.length + ' 句话，拿不准要不要记'),
-          hh('ul', null, rows.map(function (row) {
-            return hh('li', { key: row.id },
-              hh('q', null, row.text),
-              hh('small', null,
-                (row.attach && row.suggestedTitle ? '补到「' + row.suggestedTitle + '」' : (row.workspaceLabel ? '在 ' + row.workspaceLabel : '还没定在哪做'))
-                + ' · ' + (row.ago || '刚刚')),
-              hh('button', {
-                type: 'button',
-                className: 'sa2-btn pri small',
-                disabled: S.busy === row.id,
-                onClick: function () {
-                  if (row.attach) pendingAttach(row.id)
-                  else pendingAccept(row.id)
-                },
-              }, row.attach ? '补到那张卡上' : '记下'),
-              hh('button', {
-                type: 'button',
-                className: 'sa2-btn small',
-                disabled: S.busy === row.id,
-                onClick: function () { pendingDismiss(row.id) },
-              }, '不用'),
-            )
-          })),
+        var open = !!S.pendingOpen
+        var shown = open ? (S.pendingAll ? rows : rows.slice(0, 8)) : []
+        var more = open ? rows.length - shown.length : 0
+        return hh('section', { key: 'pending', className: 'sa2-pending', id: 'sa2-pending' },
+          hh('button', {
+            type: 'button',
+            className: 'sa2-pending-head',
+            'aria-expanded': open ? 'true' : 'false',
+            'aria-controls': 'sa2-pending-list',
+            'aria-label': '待确认 ' + rows.length + ' 条，' + (open ? '收起' : '点开看'),
+            onClick: function () {
+              patch(function (prev) {
+                return { pendingOpen: !prev.pendingOpen, pendingAll: false }
+              })
+            },
+          },
+            hh('span', { className: 'sa2-pending-mark', 'aria-hidden': 'true' }, '?'),
+            hh('span', { className: 'sa2-pending-name' }, '待确认'),
+            hh('b', { className: 'sa2-pending-n' }, String(rows.length)),
+            hh('span', { className: 'sa2-pending-hint' },
+              open ? '先看短的；要原文再展开，记不记由你定' : '它听到但拿不准要不要记，先收在这里，不占屏'),
+            hh('span', { className: 'sa2-pending-go' }, open ? '收起' : '点开看'),
+          ),
+          open
+            ? hh('div', { key: 'body', className: 'sa2-pending-body', id: 'sa2-pending-list' },
+                hh('ul', null, shown.map(function (row) {
+                  var full = !!S.pendingFull[row.id]
+                  var text = String(row.text || '')
+                  // 预览是真截短的字符串，不是靠 CSS 夹住整段；展开前读屏也只读到短的。
+                  var flat = text.replace(/\s+/g, ' ').trim()
+                  var preview = flat.length > 72 ? flat.slice(0, 72) + '…' : flat
+                  var long = preview !== flat || text.indexOf('\n') >= 0
+                  var textId = 'sa2-pending-text-' + row.id
+                  return hh('li', { key: row.id, className: 'sa2-pending-row' + (full ? ' is-full' : '') },
+                    hh('div', { className: 'sa2-pending-main' },
+                      hh('p', { className: 'sa2-pending-text', id: textId }, full ? text : preview),
+                      hh('p', { className: 'sa2-pending-meta' },
+                        hh('small', null,
+                          (row.attach && row.suggestedTitle ? '可补到「' + row.suggestedTitle + '」' : (row.workspaceLabel ? '在 ' + row.workspaceLabel : '还没定在哪做'))
+                          + ' · ' + (row.ago || '刚刚')),
+                        long
+                          ? hh('button', {
+                              type: 'button',
+                              className: 'sa2-link sa2-pending-open',
+                              'aria-expanded': full ? 'true' : 'false',
+                              'aria-controls': textId,
+                              onClick: function () {
+                                patch(function (prev) {
+                                  var next = Object.assign({}, prev.pendingFull)
+                                  if (next[row.id]) delete next[row.id]
+                                  else next[row.id] = true
+                                  return { pendingFull: next }
+                                })
+                              },
+                            }, full ? '收起原文' : '展开原文')
+                          : null,
+                      ),
+                    ),
+                    hh('div', { className: 'sa2-pending-acts' },
+                      hh('button', {
+                        type: 'button',
+                        className: 'sa2-btn pri small',
+                        disabled: S.busy === row.id,
+                        onClick: function () {
+                          if (row.attach) pendingAttach(row.id)
+                          else pendingAccept(row.id)
+                        },
+                      }, row.attach ? '补到那张卡上' : '记下'),
+                      hh('button', {
+                        type: 'button',
+                        className: 'sa2-btn small',
+                        disabled: S.busy === row.id,
+                        onClick: function () { pendingDismiss(row.id) },
+                      }, '不用'),
+                    ),
+                  )
+                })),
+                more > 0
+                  ? hh('div', { key: 'more', className: 'sa2-pending-foot' },
+                      hh('button', {
+                        type: 'button',
+                        className: 'sa2-more',
+                        onClick: function () { patch({ pendingAll: true }) },
+                      }, '还有 ' + more + ' 条'),
+                    )
+                  : null,
+              )
+            : null,
         )
       }
 
@@ -1652,13 +1734,17 @@ window.__ModuleLoader__.load({
           S.error ? hh('p', { className: 'sa2-banner' }, '读不到最新台账：' + S.error) : null,
           renderComposer(),
           S.composerError ? hh('p', { className: 'sa2-say-note' }, S.composerError) : null,
-          renderInbox(),
           hh('div', { className: 'sa2-field', role: 'navigation', 'aria-label': '全部事情，按轮到谁分', ref: fieldRef },
             GROUPS.map(renderZone),
           ),
           hh('p', { className: 'sa2-under' }, '往下滑就是全部。点一格直接跳到那一组；滑下去以后，这五格会收成顶上的一条页签。'),
           renderTabs(),
-          GROUPS.map(renderSection),
+          GROUPS.map(function (key) {
+            // 待确认紧跟「等你」，不压到排队末尾；它默认收着，不抢首屏。
+            var parts = [renderSection(key)]
+            if (key === 'waiting') parts.push(renderPendingRail())
+            return parts
+          }),
           renderVents(),
         ),
         renderRouterPop(),
