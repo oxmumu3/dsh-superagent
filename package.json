@@ -1,6 +1,6 @@
 {
   "name": "@oxmumu3/dsh-superagent",
-  "version": "0.2.0-preview.7",
+  "version": "0.2.0-preview.8",
   "private": false,
   "description": "Community task board for DeepSeek Harness with independent execution sessions and evidence-based review.",
   "type": "module",

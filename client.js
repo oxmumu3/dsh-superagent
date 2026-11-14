@@ -306,7 +306,7 @@ window.__ModuleLoader__.load({
       '--sa2-sans:var(--dsw-font-family,-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif);',
       '--sa2-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;',
       '--sa2-ease:cubic-bezier(.2,.8,.2,1);',
-      'min-height:100%;background:var(--sa2-bg);color:var(--sa2-ink);',
+      'position:relative;height:100%;min-height:0;overflow:hidden;background:var(--sa2-bg);color:var(--sa2-ink);',
       'font:14px/22px var(--sa2-sans);-webkit-font-smoothing:antialiased;container-type:inline-size;container-name:sa2}',
       '@media (prefers-color-scheme:dark){.sa2{' + DARK_VARS + '}}',
       'body[data-ds-dark-theme="true"] .sa2,body[data-theme="dark"] .sa2,.sa2[data-theme="dark"]{' + DARK_VARS + 'color-scheme:dark}',
@@ -318,6 +318,7 @@ window.__ModuleLoader__.load({
       ':where(.sa2) input,:where(.sa2) textarea{font:inherit;color:inherit}',
       '.sa2 :focus-visible{outline:2px solid var(--sa2-run);outline-offset:2px;border-radius:4px}',
       '@media (prefers-reduced-motion:reduce){.sa2 *{animation:none!important;transition:none!important}}',
+      '.sa2-scroll{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}',
       '.sa2-inner{max-width:920px;margin:0 auto;padding:40px 36px 110px;width:100%}',
       '.sa2-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}',
       '.sa2-eyebrow{display:flex;align-items:center;gap:10px;font:11px/16px var(--sa2-mono);letter-spacing:.1em;color:var(--sa2-ink3);text-transform:uppercase}',
@@ -546,7 +547,7 @@ window.__ModuleLoader__.load({
       '.sa2-code{flex:none;margin-right:7px;font:11px/17px var(--sa2-mono);color:var(--sa2-ink3);letter-spacing:.02em}',
       '.sa2-checkline{display:flex;align-items:center;gap:9px;margin-top:16px;font-size:13px;line-height:20px;color:var(--sa2-ink2);cursor:pointer}',
       '.sa2-checkline input{width:16px;height:16px;margin:0;accent-color:var(--sa2-ink)}',
-      '.sa2-toast{position:fixed;left:50%;bottom:28px;z-index:100;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:10px 16px;border-radius:999px;background:var(--sa2-ink);color:var(--sa2-bg);font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.18);animation:sa2slide .3s var(--sa2-ease)}',
+      '.sa2-toast{position:fixed;left:50%;bottom:28px;z-index:100;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100% - 32px);padding:10px 16px;border-radius:999px;background:var(--sa2-ink);color:var(--sa2-bg);font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.18);animation:sa2slide .3s var(--sa2-ease)}',
       '.sa2-toast button{flex:none;color:var(--sa2-bg);border-bottom:1px solid color-mix(in srgb,var(--sa2-bg) 50%,transparent);white-space:nowrap}',
       '.sa2-toast span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.sa2-chip-x{flex:none;height:24px;padding:0 9px;border-radius:999px;font-size:11.5px;color:var(--sa2-ink2);border:1px solid var(--sa2-line2);background:transparent;white-space:nowrap}',
@@ -981,6 +982,7 @@ window.__ModuleLoader__.load({
       var setWsTick = wsTickState[1]
       var sectionRefs = React.useRef({})
       var fieldRef = React.useRef(null)
+      var scrollRef = React.useRef(null)
       var pickerAnchorRef = React.useRef(null)
       var nativeTargetRef = React.useRef(null)
       var hookWsItems = typeof props.useWorkspaces === 'function' ? props.useWorkspaces(selectWorkspaceItems) : null
@@ -1546,8 +1548,15 @@ window.__ModuleLoader__.load({
       function scrollToGroup(key) {
         patch({ tab: key })
         var el = typeof document !== 'undefined' ? document.getElementById('sa2-sec-' + key) : null
-        if (el && typeof el.scrollIntoView === 'function') {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        var port = scrollRef.current
+        var reduced = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        var behavior = reduced ? 'auto' : 'smooth'
+        if (el && port && typeof el.getBoundingClientRect === 'function' && typeof port.getBoundingClientRect === 'function') {
+          var top = Math.max(0, el.getBoundingClientRect().top - port.getBoundingClientRect().top + (port.scrollTop || 0) - 64)
+          if (typeof port.scrollTo === 'function') port.scrollTo({ top: top, behavior: behavior })
+          else port.scrollTop = top
+        } else if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: behavior, block: 'start' })
         }
       }
 
@@ -1612,13 +1621,15 @@ window.__ModuleLoader__.load({
       React.useEffect(function () {
         var raf = 0
         function measure() {
+          var scroller = scrollRef.current
           var field = fieldRef.current
-          var scrolled = field ? field.getBoundingClientRect().bottom < 8 : false
-          var line = 92
+          var origin = scroller && typeof scroller.getBoundingClientRect === 'function' ? scroller.getBoundingClientRect().top : 0
+          var scrolled = field && typeof field.getBoundingClientRect === 'function' ? field.getBoundingClientRect().bottom < origin + 8 : false
+          var line = origin + 92
           var current = 'waiting'
           for (var i = 0; i < GROUPS.length; i += 1) {
             var el = sectionRefs.current[GROUPS[i]]
-            if (el && el.getBoundingClientRect().top <= line) current = GROUPS[i]
+            if (el && typeof el.getBoundingClientRect === 'function' && el.getBoundingClientRect().top <= line) current = GROUPS[i]
           }
           patch(function (prev) {
             if (prev.scrolled === scrolled && prev.tab === current) return {}
@@ -1627,23 +1638,30 @@ window.__ModuleLoader__.load({
         }
         function onScroll() {
           if (raf) return
-          raf = requestAnimationFrame(function () {
-            raf = 0
+          if (typeof requestAnimationFrame === 'function') {
+            raf = requestAnimationFrame(function () {
+              raf = 0
+              measure()
+            })
+          } else {
             measure()
-          })
+          }
         }
-        window.addEventListener('scroll', onScroll, true)
-        document.addEventListener('scroll', onScroll, true)
-        window.addEventListener('resize', onScroll)
+        var port = scrollRef.current
+        if (port && typeof port.addEventListener === 'function') port.addEventListener('scroll', onScroll, { passive: true })
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('scroll', onScroll, true)
+        if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') document.addEventListener('scroll', onScroll, true)
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('resize', onScroll)
         var start = setTimeout(measure, 40)
         return function () {
           clearTimeout(start)
-          if (raf) cancelAnimationFrame(raf)
-          window.removeEventListener('scroll', onScroll, true)
-          document.removeEventListener('scroll', onScroll, true)
-          window.removeEventListener('resize', onScroll)
+          if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf)
+          if (port && typeof port.removeEventListener === 'function') port.removeEventListener('scroll', onScroll)
+          if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') window.removeEventListener('scroll', onScroll, true)
+          if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') document.removeEventListener('scroll', onScroll, true)
+          if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') window.removeEventListener('resize', onScroll)
         }
-      }, [])
+      }, [Boolean(S.view)])
 
       React.useEffect(function () {
         if (!S.toast) return undefined
@@ -2776,13 +2794,13 @@ window.__ModuleLoader__.load({
       }
 
       if (S.loading && !S.view) {
-        return hh('div', { className: 'sa2' }, hh('div', { className: 'sa2-inner' },
+        return hh('div', { className: 'sa2' }, hh('div', { className: 'sa2-scroll', ref: scrollRef }, hh('div', { className: 'sa2-inner' },
           hh('p', { className: 'sa2-loading' }, '正在读取台账…'),
-        ))
+        )))
       }
 
       if (!S.view) {
-        return hh('div', { className: 'sa2' }, hh('div', { className: 'sa2-inner' },
+        return hh('div', { className: 'sa2' }, hh('div', { className: 'sa2-scroll', ref: scrollRef }, hh('div', { className: 'sa2-inner' },
           hh('div', { className: 'sa2-error' },
             hh('h2', null, '读不到台账'),
             hh('p', null, S.error || '宿主没有返回数据'),
@@ -2793,7 +2811,7 @@ window.__ModuleLoader__.load({
               onClick: function () { patch(function (prev) { return { loading: true, error: null, refresh: prev.refresh + 1 } }) },
             }, '再读一次'),
           ),
-        ))
+        )))
       }
 
       var counts = S.view.counts || { waiting: 0, running: 0, queued: 0, later: 0, doneToday: 0 }
@@ -2810,8 +2828,9 @@ window.__ModuleLoader__.load({
         : '另外 ' + (counts.running || 0) + ' 件在跑，' + (counts.queued || 0) + ' 件排队。'
 
       return hh('div', { className: 'sa2' },
-        hh('div', { className: 'sa2-inner' },
-          hh('div', { className: 'sa2-top' },
+        hh('div', { className: 'sa2-scroll', ref: scrollRef },
+          hh('div', { className: 'sa2-inner' },
+            hh('div', { className: 'sa2-top' },
             hh('p', { className: 'sa2-eyebrow' }, 'SUPER AGENT', hh('span', { className: 'sa2-live' }, hh('i'), '本机台账')),
             hh('div', { className: 'sa2-status-pills' },
               hh('button', {
@@ -2856,6 +2875,7 @@ window.__ModuleLoader__.load({
             return parts
           }),
           renderVents(),
+          ),
         ),
         renderRouterPop(),
         renderPicker(),

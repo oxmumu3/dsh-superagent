@@ -394,9 +394,30 @@ assert.equal(titleFrom('记一下，整理发布清单'), '整理发布清单')
     },
   })
 
+  // Scroll port contracts: outer .sa2 shell + inner .sa2-scroll port (keeps overlays pinned when scrolled)
+  assert.match(
+    source,
+    /'position:relative;height:100%;min-height:0;overflow:hidden;background:var\(--sa2-bg\);color:var\(--sa2-ink\);'/,
+    '.sa2 必须作为非滚动固定壳容器',
+  )
+  assert.match(
+    source,
+    /'\.sa2-scroll\{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain\}'/,
+    '必须定义独立的 .sa2-scroll 纵向滚动视口',
+  )
+  assert.doesNotMatch(
+    source,
+    /'min-height:100%;background:var\(--sa2-bg\);color:var\(--sa2-ink\);'/,
+    '.sa2 不得退化为无 overflow-y:auto 的 min-height:100%',
+  )
+
   app.render()
   await flush()
   let tree = app.render()
+  assert.ok(hasClass(tree, 'sa2'))
+  const scrollPort = tree.children.find(c => c && typeof c === 'object' && hasClass(c, 'sa2-scroll'))
+  assert.ok(scrollPort, '.sa2 直接子级必须包含 .sa2-scroll')
+  assert.equal(elementsBy(scrollPort, n => hasClass(n, 'sa2-inner')).length, 1, '.sa2-scroll 内包着 .sa2-inner')
 
   // 6-dot cap + '+36' on queued zone
   const zones = elementsBy(tree, n => hasClass(n, 'sa2-zone'))
@@ -469,6 +490,16 @@ assert.equal(titleFrom('记一下，整理发布清单'), '整理发布清单')
   const rulesPill = elementsBy(tree, n => hasClass(n, 'sa2-pill') && textOf(n).includes('规矩'))[0]
   rulesPill.props.onClick()
   tree = app.render()
+  assert.equal(
+    tree.children.some(c => c && typeof c === 'object' && hasClass(c, 'sa2-pop')),
+    true,
+    '.sa2-pop 弹窗必须作为 .sa2 直接子级挂载，位于 .sa2-scroll 之外',
+  )
+  assert.equal(
+    elementsBy(tree.children.find(c => c && typeof c === 'object' && hasClass(c, 'sa2-scroll')), n => hasClass(n, 'sa2-pop')).length,
+    0,
+    '.sa2-pop 不得落在 .sa2-scroll 内部随滚动偏移',
+  )
   assert.ok(textOf(elementsBy(tree, n => hasClass(n, 'sa2-popcard'))[0]).includes('先跑 check-client'))
   const ventsTab = elementsBy(tree, n => hasClass(n, 'sa2-mdl-tab') && textOf(n).includes('Agent 吐槽'))[0]
   ventsTab.props.onClick()
@@ -506,6 +537,16 @@ assert.equal(titleFrom('记一下，整理发布清单'), '整理发布清单')
   const formsInDrawer = elementsBy(elementsBy(tree, n => hasClass(n, 'sa2-drw-foot'))[0], n => hasClass(n, 'sa2-form'))
   assert.equal(formsInDrawer.length, 1, '打回表单位于抽屉底栏内')
   assert.equal(formsAll.length, 1, '背景行不会重复弹出第二份表单')
+  assert.equal(
+    tree.children.some(c => c && typeof c === 'object' && hasClass(c, 'sa2-scrim')),
+    true,
+    '.sa2-scrim 抽屉必须作为 .sa2 直接子级挂载，位于 .sa2-scroll 之外',
+  )
+  assert.equal(
+    elementsBy(tree.children.find(c => c && typeof c === 'object' && hasClass(c, 'sa2-scroll')), n => hasClass(n, 'sa2-scrim')).length,
+    0,
+    '.sa2-scrim 不得落在 .sa2-scroll 内部随滚动偏移',
+  )
 }
 
 fs.rmSync(tmpRoot, { recursive: true, force: true })
