@@ -156,8 +156,12 @@ function createHooks() {
       return null
     },
     slots: {
-      factory(name) { return name === 'workspace.picker' ? { name } : undefined },
-      subscribeFactory() { return () => {} },
+      snapshot(root) {
+        return root === 'factory:workspace.picker'
+          ? [{ type: 'factory', name: 'workspace.picker' }]
+          : []
+      },
+      subscribe() { return () => {} },
       inject(_name, reg) { return reg() },
       register(opts, Component) { mounted.set(opts.name, { opts, Component }); return () => {} },
     },
@@ -277,8 +281,12 @@ function createHooks() {
       return null
     },
     slots: {
-      factory(name) { return name === 'workspace.picker' ? { name } : undefined },
-      subscribeFactory() { return () => {} },
+      snapshot(root) {
+        return root === 'factory:workspace.picker'
+          ? [{ type: 'factory', name: 'workspace.picker' }]
+          : []
+      },
+      subscribe() { return () => {} },
       inject(_name, reg) { return reg() },
       register(opts, Component) { rc3Mounted.set(opts.name, Component); return () => {} },
     },
@@ -342,8 +350,8 @@ function createHooks() {
     effect(setup) { setup() },
     get() { return null },
     slots: {
-      factory() { return undefined },
-      subscribeFactory() { return () => {} },
+      snapshot() { return [] },
+      subscribe() { return () => {} },
       inject(_name, reg) { return reg() },
       register(opts, Component) { rc2Mounted.set(opts.name, Component); return () => {} },
     },

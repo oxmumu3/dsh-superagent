@@ -51,11 +51,41 @@ window.__ModuleLoader__.load({
       return String(path || '').replace(/\/+$/, '')
     }
 
+    function hasWorkspacePickerFactory(slots) {
+      if (!slots) return false
+      if (typeof slots.snapshot === 'function') {
+        var snap = slots.snapshot('factory:workspace.picker')
+        return Array.isArray(snap) && snap.length > 0
+      }
+      if (typeof slots.spec === 'function') {
+        return Boolean(slots.spec('workspace.picker.directoryFlow'))
+      }
+      if (typeof slots.factory === 'function') {
+        return Boolean(slots.factory('workspace.picker'))
+      }
+      return false
+    }
+
+    function subscribeWorkspacePickerFactory(slots, listener) {
+      if (!slots || typeof listener !== 'function') return null
+      var unsubs = []
+      if (typeof slots.subscribe === 'function') {
+        unsubs.push(slots.subscribe('workspace.picker.directoryFlow', listener))
+      }
+      if (typeof slots.subscribeFactory === 'function') {
+        unsubs.push(slots.subscribeFactory('workspace.picker', listener))
+      }
+      if (!unsubs.length) return null
+      return function () {
+        for (var i = 0; i < unsubs.length; i += 1) {
+          if (typeof unsubs[i] === 'function') unsubs[i]()
+        }
+      }
+    }
+
     function canUseWorkspacePicker(props) {
       return Boolean(
-        hostUi.slots
-        && typeof hostUi.slots.factory === 'function'
-        && hostUi.slots.factory('workspace.picker')
+        hasWorkspacePickerFactory(hostUi.slots)
         && props
         && typeof props.renderFactorySlot === 'function'
       )
@@ -638,9 +668,7 @@ window.__ModuleLoader__.load({
         var unsubWs = hostUi.workspaces && hostUi.workspaces.list && typeof hostUi.workspaces.list.subscribe === 'function'
           ? hostUi.workspaces.list.subscribe(bump)
           : null
-        var unsubFactory = hostUi.slots && typeof hostUi.slots.subscribeFactory === 'function'
-          ? hostUi.slots.subscribeFactory('workspace.picker', bump)
-          : null
+        var unsubFactory = subscribeWorkspacePickerFactory(hostUi.slots, bump)
         return function () {
           if (typeof unsubWs === 'function') unsubWs()
           if (typeof unsubFactory === 'function') unsubFactory()
@@ -1518,9 +1546,7 @@ window.__ModuleLoader__.load({
         var unsubWs = hostUi.workspaces && hostUi.workspaces.list && typeof hostUi.workspaces.list.subscribe === 'function'
           ? hostUi.workspaces.list.subscribe(onWs)
           : null
-        var unsubFactory = hostUi.slots && typeof hostUi.slots.subscribeFactory === 'function'
-          ? hostUi.slots.subscribeFactory('workspace.picker', onWs)
-          : null
+        var unsubFactory = subscribeWorkspacePickerFactory(hostUi.slots, onWs)
         return function () {
           boardListeners.delete(onBoard)
           if (typeof unsubWs === 'function') unsubWs()
