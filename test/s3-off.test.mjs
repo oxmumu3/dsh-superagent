@@ -139,7 +139,8 @@ function normalizeView(view, workspace) {
   const dir = makeWorkspace()
   const file = writeFixedLedger(dir)
   updateRouter({ mode: 'off' }, { file })
-  const view = normalizeView(buildView({ file }), dir)
+  const fixedNow = 1_760_000_000_000 + 400 * 86_400_000
+  const view = normalizeView(buildView({ file, now: fixedNow }), dir)
   const expected = JSON.parse(JSON.stringify(golden.view))
   expected.revision = 0
   assert.deepEqual(view, expected, 'off 档下视图必须和 S2 golden 一致')
@@ -152,7 +153,8 @@ function normalizeView(view, workspace) {
   const dir = makeWorkspace()
   const file = writeFixedLedger(dir)
   updateRouter({ mode: 'off' }, { file })
-  const view = buildView({ file })
+  const fixedNow = 1_760_000_000_000 + 400 * 86_400_000
+  const view = buildView({ file, now: fixedNow })
   const stages = Object.fromEntries(view.cards.map(card => [card.id, card.stage]))
   assert.deepEqual(stages, golden.stages, '阶段不能被 S3 的默认值读歪')
   fs.rmSync(dir, { recursive: true, force: true })
