@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
     var CARD_URL = '/api/superagent/card'
     // S4：「打开会话」优先用宿主的 uiWorkspace；拿不到就退回复制会话编号。
     // RC3：补充 workspaces / sessions / slots，用来渲染 sidebar.session.action 与 workspace.picker。
-    var hostUi = { openSession: null, canOpen: false, workspaces: null, sessions: null, slots: null }
+    var hostUi = { ctx: null, openSession: null, canOpen: false, workspaces: null, sessions: null, slots: null }
     var boardListeners = new Set()
 
     function notifyBoardUpdated() {
@@ -49,6 +49,41 @@ window.__ModuleLoader__.load({
 
     function normalizeDir(path) {
       return String(path || '').replace(/\/+$/, '')
+    }
+
+    function selectWorkspaceItems(state) {
+      return state && Array.isArray(state.items) ? state.items : null
+    }
+
+    function getHostService(name, isDeclared) {
+      var ctx = hostUi.ctx
+      if (ctx) {
+        if (typeof ctx.get === 'function') {
+          try {
+            var viaGet = ctx.get(name, false)
+            if (viaGet) return viaGet
+          } catch (error) {}
+          if (!isDeclared) return hostUi[name] || null
+        } else {
+          try {
+            if (ctx[name]) return ctx[name]
+          } catch (error2) {}
+        }
+      }
+      return hostUi[name] || null
+    }
+
+    function resolveHostSlots() {
+      return hostUi.slots || getHostService('slots', true)
+    }
+
+    function resolveOpenSession() {
+      if (typeof hostUi.openSession === 'function') return hostUi.openSession
+      var uiWs = getHostService('uiWorkspace', false)
+      if (uiWs && typeof uiWs.openSession === 'function') {
+        return function (id) { return uiWs.openSession(id) }
+      }
+      return null
     }
 
     function hasWorkspacePickerFactory(slots) {
@@ -85,53 +120,64 @@ window.__ModuleLoader__.load({
 
     function canUseWorkspacePicker(props) {
       return Boolean(
-        hasWorkspacePickerFactory(hostUi.slots)
+        hasWorkspacePickerFactory(resolveHostSlots())
         && props
         && typeof props.renderFactorySlot === 'function'
       )
     }
 
-    function listHostWorkspaceItems() {
-      var list = hostUi.workspaces && hostUi.workspaces.list
-      if (!list || typeof list.getSnapshot !== 'function') return []
-      var snap = list.getSnapshot()
-      var items = (snap && Array.isArray(snap.items)) ? snap.items : []
-      return items.filter(function (row) {
-        return row && (row.path || row.directory)
-      }).map(function (row) {
-        var p = row.path || row.directory
+    function listHostWorkspaceItems(extraItems) {
+      var wsSvc = getHostService('workspaces', false)
+      var list = wsSvc && wsSvc.list
+      var liveItems = []
+      if (list && typeof list.getSnapshot === 'function') {
+        var snap = list.getSnapshot()
+        if (snap && Array.isArray(snap.items)) liveItems = snap.items
+      }
+      var raw = liveItems.concat(Array.isArray(extraItems) ? extraItems : [])
+      var seen = {}
+      var out = []
+      for (var i = 0; i < raw.length; i += 1) {
+        var row = raw[i]
+        if (!row || !(row.path || row.directory || row.rootPath || row.cwd)) continue
+        var p = row.path || row.directory || row.rootPath || row.cwd
         var dir = normalizeDir(p) || String(p)
+        var id = row.workspaceId || row.id || dir
+        if (!id || seen[id]) continue
+        seen[id] = true
         var parts = dir.split('/')
         var fallbackName = parts[parts.length - 1] || dir
-        return {
-          id: row.workspaceId || row.id || dir,
+        out.push({
+          id: id,
           path: p,
           label: row.title || row.name || fallbackName,
-        }
-      })
+        })
+      }
+      return out
     }
 
-    function pathByWorkspaceId(wsId) {
+    function pathByWorkspaceId(wsId, extraItems) {
       if (!wsId) return null
-      var items = listHostWorkspaceItems()
+      var items = listHostWorkspaceItems(extraItems)
       for (var i = 0; i < items.length; i += 1) {
         if (items[i].id === wsId) return items[i].path
       }
       return null
     }
 
-    function workspaceIdByPath(wsPath) {
+    function workspaceIdByPath(wsPath, extraItems) {
       var target = normalizeDir(wsPath)
       if (!target) return undefined
-      var items = listHostWorkspaceItems()
+      var items = listHostWorkspaceItems(extraItems)
       for (var i = 0; i < items.length; i += 1) {
         if (normalizeDir(items[i].path) === target) return items[i].id
       }
       return undefined
     }
 
-    function activeForegroundWorkspacePath() {
-      var list = hostUi.sessions && hostUi.sessions.list
+    function activeForegroundWorkspacePath(extraItems) {
+      var sessSvc = getHostService('sessions', false)
+      var list = sessSvc && sessSvc.list
       if (!list || typeof list.getSnapshot !== 'function') return null
       var snap = list.getSnapshot()
       var byId = snap && snap.byId
@@ -140,7 +186,7 @@ window.__ModuleLoader__.load({
       for (var i = 0; i < keys.length; i += 1) {
         var row = byId[keys[i]]
         if (row && row.retainedBy && (row.retainedBy.mainView || 0) > 0 && row.workspaceId) {
-          var p = pathByWorkspaceId(row.workspaceId)
+          var p = pathByWorkspaceId(row.workspaceId, extraItems)
           if (p) return p
         }
       }
@@ -661,14 +707,18 @@ window.__ModuleLoader__.load({
       var tickState = React.useState(0)
       var setTick = tickState[1]
       var wsBtnRef = React.useRef(null)
+      var hookWsItems = typeof props.useWorkspaces === 'function' ? props.useWorkspaces(selectWorkspaceItems) : null
+      var hookWsRef = React.useRef(null)
+      hookWsRef.current = hookWsItems
 
       React.useEffect(function () {
         ensureStyle()
         var bump = function () { setTick(function (v) { return v + 1 }) }
-        var unsubWs = hostUi.workspaces && hostUi.workspaces.list && typeof hostUi.workspaces.list.subscribe === 'function'
-          ? hostUi.workspaces.list.subscribe(bump)
+        var wsSvc = getHostService('workspaces', false)
+        var unsubWs = wsSvc && wsSvc.list && typeof wsSvc.list.subscribe === 'function'
+          ? wsSvc.list.subscribe(bump)
           : null
-        var unsubFactory = subscribeWorkspacePickerFactory(hostUi.slots, bump)
+        var unsubFactory = subscribeWorkspacePickerFactory(resolveHostSlots(), bump)
         return function () {
           if (typeof unsubWs === 'function') unsubWs()
           if (typeof unsubFactory === 'function') unsubFactory()
@@ -689,7 +739,7 @@ window.__ModuleLoader__.load({
         setWsPickerOpen(false)
         setWsPath(function (prev) {
           if (prev !== undefined) return prev
-          var fg = activeForegroundWorkspacePath()
+          var fg = activeForegroundWorkspacePath(hookWsRef.current)
           return fg || undefined
         })
         setOpen(true)
@@ -765,7 +815,7 @@ window.__ModuleLoader__.load({
       ))
 
       var usePicker = canUseWorkspacePicker(props)
-      var hostWorkspaces = listHostWorkspaceItems()
+      var hostWorkspaces = listHostWorkspaceItems(hookWsItems)
       var resolvedWsLabel = wsPath === null
         ? '先不定'
         : wsPath
@@ -776,7 +826,7 @@ window.__ModuleLoader__.load({
               return wsLabel(wsPath)
             })()
           : '默认工作区'
-      var selectedWsId = typeof wsPath === 'string' && wsPath ? workspaceIdByPath(wsPath) : undefined
+      var selectedWsId = typeof wsPath === 'string' && wsPath ? workspaceIdByPath(wsPath, hookWsItems) : undefined
 
       var modalContent = open ? hh('div', {
         key: 'sa2-qa-modal',
@@ -844,7 +894,7 @@ window.__ModuleLoader__.load({
                 anchorRef: wsBtnRef,
                 selectedId: selectedWsId,
                 onPick: function (wsId) {
-                  var nextPath = pathByWorkspaceId(wsId)
+                  var nextPath = pathByWorkspaceId(wsId, hookWsRef.current)
                   if (nextPath) setWsPath(nextPath)
                   setWsPickerOpen(false)
                 },
@@ -933,6 +983,9 @@ window.__ModuleLoader__.load({
       var fieldRef = React.useRef(null)
       var pickerAnchorRef = React.useRef(null)
       var nativeTargetRef = React.useRef(null)
+      var hookWsItems = typeof props.useWorkspaces === 'function' ? props.useWorkspaces(selectWorkspaceItems) : null
+      var hookWsRef = React.useRef(null)
+      hookWsRef.current = hookWsItems
 
       function patch(next) {
         setS(function (prev) {
@@ -1266,9 +1319,10 @@ window.__ModuleLoader__.load({
 
       function openSessionRow(card) {
         var sessionId = String(card.sessionId || '')
-        if (hostUi.openSession) {
+        var openFn = resolveOpenSession()
+        if (openFn) {
           try {
-            var opened = hostUi.openSession(sessionId)
+            var opened = openFn(sessionId)
             if (opened && typeof opened.catch === 'function') opened.catch(function () {})
             return
           } catch (error) {
@@ -1543,10 +1597,11 @@ window.__ModuleLoader__.load({
         var onBoard = function () { patch(function (prev) { return { refresh: prev.refresh + 1 } }) }
         var onWs = function () { setWsTick(function (v) { return v + 1 }) }
         boardListeners.add(onBoard)
-        var unsubWs = hostUi.workspaces && hostUi.workspaces.list && typeof hostUi.workspaces.list.subscribe === 'function'
-          ? hostUi.workspaces.list.subscribe(onWs)
+        var wsSvc = getHostService('workspaces', false)
+        var unsubWs = wsSvc && wsSvc.list && typeof wsSvc.list.subscribe === 'function'
+          ? wsSvc.list.subscribe(onWs)
           : null
-        var unsubFactory = subscribeWorkspacePickerFactory(hostUi.slots, onWs)
+        var unsubFactory = subscribeWorkspacePickerFactory(resolveHostSlots(), onWs)
         return function () {
           boardListeners.delete(onBoard)
           if (typeof unsubWs === 'function') unsubWs()
@@ -1763,7 +1818,7 @@ window.__ModuleLoader__.load({
                   className: 'sa2-btn',
                   title: card.sessionId,
                   onClick: function () { openSessionRow(card) },
-                }, hostUi.canOpen ? '打开会话' : sessionShort8(card.sessionId))
+                }, resolveOpenSession() ? '打开会话' : sessionShort8(card.sessionId))
               : null,
             (card.actions || []).map(function (definition, index) {
               return renderAction(card, definition, index)
@@ -2342,10 +2397,10 @@ window.__ModuleLoader__.load({
           return props.renderFactorySlot('workspace.picker', {
             open: pickerOpen,
             anchorRef: pickerAnchorRef,
-            selectedId: workspaceIdByPath(curPath),
+            selectedId: workspaceIdByPath(curPath, hookWsItems),
             onPick: function (wsId) {
               var activeMeta = nativeTargetRef.current || (picker && picker.native ? picker : null)
-              var p = pathByWorkspaceId(wsId)
+              var p = pathByWorkspaceId(wsId, hookWsRef.current)
               if (p && activeMeta) {
                 pick(p, activeMeta)
               } else {
@@ -2810,12 +2865,19 @@ window.__ModuleLoader__.load({
     }
 
     function apply(ctx) {
-      hostUi.slots = ctx && ctx.slots ? ctx.slots : null
+      hostUi.ctx = ctx || null
+      hostUi.slots = (ctx && typeof ctx.get === 'function' ? ctx.get('slots', false) : null) || (ctx && ctx.slots) || null
       ctx.effect(function () {
-        hostUi.slots = ctx && ctx.slots ? ctx.slots : null
+        hostUi.ctx = ctx || null
+        hostUi.slots = (ctx && typeof ctx.get === 'function' ? ctx.get('slots', false) : null) || (ctx && ctx.slots) || null
         ensureStyle()
         return function () {
+          hostUi.ctx = null
           hostUi.slots = null
+          hostUi.workspaces = null
+          hostUi.sessions = null
+          hostUi.openSession = null
+          hostUi.canOpen = false
           boardListeners.clear()
         }
       })
@@ -2832,44 +2894,19 @@ window.__ModuleLoader__.load({
         hostUi.sessions = service || null
       }
       try {
-        bindUiWorkspace(ctx.get && ctx.get('uiWorkspace', false))
+        bindUiWorkspace(ctx && ctx.get && ctx.get('uiWorkspace', false))
       } catch (error) {
-        // 服务还没挂上，等注入。
+        // 服务还没挂上，使用时再从 ctx.get('uiWorkspace', false) 懒查。
       }
       try {
-        bindWorkspaces(ctx.get && ctx.get('workspaces', false))
+        bindWorkspaces(ctx && ctx.get && ctx.get('workspaces', false))
       } catch (error) {
-        // RC2 或无工作区服务时退回台账列表。
+        // RC2 或工作区服务延迟初始化时，使用时再通过 ctx.get / props.useWorkspaces 读取。
       }
       try {
-        bindSessions(ctx.get && ctx.get('sessions', false))
+        bindSessions(ctx && ctx.get && ctx.get('sessions', false))
       } catch (error) {
         // 拿不到前台会话时按默认工作区建卡。
-      }
-      try {
-        if (typeof ctx.inject === 'function') {
-          ctx.effect(() => ctx.inject(['uiWorkspace'], scope => {
-            bindUiWorkspace(scope && (scope.uiWorkspace || (scope.get && scope.get('uiWorkspace', false))))
-            return function () {
-              hostUi.openSession = null
-              hostUi.canOpen = false
-            }
-          }))
-          ctx.effect(() => ctx.inject(['workspaces'], scope => {
-            bindWorkspaces(scope && (scope.workspaces || (scope.get && scope.get('workspaces', false))))
-            return function () {
-              hostUi.workspaces = null
-            }
-          }))
-          ctx.effect(() => ctx.inject(['sessions'], scope => {
-            bindSessions(scope && (scope.sessions || (scope.get && scope.get('sessions', false))))
-            return function () {
-              hostUi.sessions = null
-            }
-          }))
-        }
-      } catch (error) {
-        // 没有对应服务时按旧行为降级。
       }
       ctx.effect(() => ctx.slots.inject('sidebar.session.action', () => ctx.slots.register({
         name: 'sidebar.session.action', id: 'superagent-quick-capture',

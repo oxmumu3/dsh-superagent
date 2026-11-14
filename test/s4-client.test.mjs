@@ -187,6 +187,61 @@ function panelTree(options = {}) {
   assert.deepEqual(openedSessions, [realSessionId])
 }
 
+// 4b. uiWorkspace 在 apply(ctx) 之后才挂上：渲染与点击时通过 ctx.get('uiWorkspace', false) 懒查仍能打开会话。
+{
+  const row = loadPlugin({ clipboard: 'absent' })
+  panelState = null
+  currentView = view
+  const mounted = new Map()
+  let lateUiWorkspace = null
+  const React = {
+    createElement: makeElement(),
+    useState(initial) {
+      if (initial && typeof initial === 'object' && 'view' in initial) {
+        if (!panelState) {
+          panelState = Object.assign({
+            loading: false, error: null, refresh: 0, tab: 'waiting', scrolled: false,
+            expanded: {}, composer: '', composerWorkspace: undefined, composerError: null,
+            form: null, formText: '', rowError: null, busy: null, picker: null,
+            routerOpen: false, drawer: null, toast: null,
+          }, initial, { view: currentView, routerOpen: false })
+        }
+        return [panelState, next => {
+          const value = typeof next === 'function' ? next(panelState) : next
+          if (!value || value === panelState) return
+          panelState = Object.assign({}, panelState, value, { view: currentView })
+        }]
+      }
+      return [initial, () => {}]
+    },
+    useEffect() {},
+    useRef(value) { return { current: value } },
+  }
+  const plugin = row.factory(() => React)
+  plugin.apply({
+    effect(setup) { setup() },
+    get(name) {
+      return name === 'uiWorkspace' ? lateUiWorkspace : null
+    },
+    slots: {
+      inject(_name, register) { return register() },
+      register(optionsRow, Component) {
+        mounted.set(optionsRow.name || optionsRow.key, { options: optionsRow, Component })
+        return () => {}
+      },
+    },
+  })
+  const Component = mounted.get('main').Component
+  assert.ok(!textOf(Component()).includes('打开会话'))
+  lateUiWorkspace = { openSession(id) { openedSessions.push(id) } }
+  const lateTree = Component()
+  assert.ok(textOf(lateTree).includes('打开会话'))
+  const sessionButton = elementsBy(lateTree, item => item.props && item.props.className === 'sa2-btn'
+    && textOf(item) === '打开会话')[0]
+  sessionButton.props.onClick()
+  assert.deepEqual(openedSessions, [realSessionId])
+}
+
 // 5. 同目录勾选项：默认勾上；取消勾选发 router_same_dir=allow。
 {
   const { tree } = panelTree({ withHost: false })
@@ -225,7 +280,7 @@ function panelTree(options = {}) {
 }
 
 assert.ok(source.includes("ctx.get('uiWorkspace', false)"))
-assert.ok(source.includes("ctx.inject(['uiWorkspace']"))
+assert.equal(source.includes('ctx.inject('), false, 'RC3 dynamic ctx forbids ctx.inject; optional services resolve lazily via ctx.get(..., false)')
 assert.ok(source.includes('navigator.clipboard'))
 
 hw.cleanup()

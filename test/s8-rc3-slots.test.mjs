@@ -369,4 +369,99 @@ function createHooks() {
   assert.equal(elementsBy(rc2Tree, n => n.props && n.props.className === 'sa2-pop').length, 1)
 }
 
+// 3. Guarded dynamicCordisContext simulation:
+//    - Proxy throws if `'inject'` or undeclared `'workspaces'`/`'sessions'`/`'uiWorkspace'` properties are accessed directly.
+//    - Workspaces service starts null during apply(ctx) and becomes available later + via props.useWorkspaces.
+//    - Picking ws-alpha in QuickCaptureAction resolves /tmp/sample-alpha and submits cleanly with zero proxy errors.
+{
+  const fetches = []
+  const factory = loadFactory((url, opts) => {
+    fetches.push({ url, body: JSON.parse(opts.body) })
+    return Promise.resolve({ ok: true, status: 200, json: async () => ({ counts: {}, groups: {} }) })
+  })
+  const hooks = createHooks()
+  const plugin = factory.factory(() => hooks.React)
+  const mounted = new Map()
+  let lateWorkspaces = null
+  let hookItems = null
+
+  const slotsService = {
+    snapshot(root) {
+      return root === 'factory:workspace.picker'
+        ? [{ type: 'factory', name: 'workspace.picker' }]
+        : []
+    },
+    subscribe() { return () => {} },
+    inject(_name, reg) { return reg() },
+    register(opts, Component) { mounted.set(opts.name, Component); return () => {} },
+  }
+
+  const guardedCtx = new Proxy({
+    effect(setup) { return setup() },
+    get(name) {
+      if (name === 'slots') return slotsService
+      if (name === 'workspaces') return lateWorkspaces
+      return undefined
+    },
+    slots: slotsService,
+  }, {
+    get(target, prop) {
+      if (prop === 'inject' || prop === 'workspaces' || prop === 'sessions' || prop === 'uiWorkspace') {
+        throw new Error(`dynamic ctx does not expose or declare "${String(prop)}"`)
+      }
+      return target[prop]
+    },
+  })
+
+  plugin.apply(guardedCtx)
+
+  // Workspaces initialize AFTER apply(ctx) and via standardKit props.useWorkspaces
+  const alphaList = [{ workspaceId: 'ws-alpha', path: '/tmp/sample-alpha', title: 'sample-alpha' }]
+  lateWorkspaces = {
+    list: {
+      getSnapshot: () => ({ items: alphaList }),
+      subscribe: () => () => {},
+    },
+  }
+  hookItems = alphaList
+
+  const QuickCapture = mounted.get('sidebar.session.action')
+  const renderFactorySlot = (_name, p) => ({ type: 'RC3GuardedPicker', props: p, children: [] })
+  const useWorkspaces = selector => selector({ items: hookItems })
+  const renderQuick = () => {
+    hooks.reset()
+    return QuickCapture({ wide: true, renderFactorySlot, useWorkspaces, children: null })
+  }
+
+  let tree = renderQuick()
+  const triggerBtn = elementsBy(tree, n => n.props && String(n.props.className || '').includes('sa2-qa-trigger'))[0]
+  triggerBtn.props.onClick()
+  tree = renderQuick()
+
+  const pickerNode = elementsBy(tree, n => n.type === 'RC3GuardedPicker')[0]
+  assert.ok(pickerNode)
+  pickerNode.props.onPick('ws-alpha')
+  tree = renderQuick()
+
+  const wsBtn = elementsBy(tree, n => n.props && n.props.className === 'sa2-qa-wsbtn')[0]
+  assert.equal(textOf(wsBtn), 'sample-alpha')
+
+  const input = elementsBy(tree, n => n.props && n.props.className === 'sa2-qa-input')[0]
+  input.props.onChange({ target: { value: '受守卫上下文验证待办' } })
+  tree = renderQuick()
+  const form = elementsBy(tree, n => n.type === 'form')[0]
+  form.props.onSubmit({ preventDefault() {} })
+  await Promise.resolve()
+  await Promise.resolve()
+  await Promise.resolve()
+
+  assert.equal(fetches.length, 1)
+  assert.deepEqual(fetches[0].body, {
+    action: 'create',
+    text: '受守卫上下文验证待办',
+    workspacePath: '/tmp/sample-alpha',
+    workspaceExplicit: true,
+  })
+}
+
 console.log('s8 rc3 slots ok')
