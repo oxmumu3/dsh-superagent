@@ -14,6 +14,7 @@ assert.equal(factory[0].id, manifest.name, 'the factory ID must match the packag
 const plugin = factory[0].factory(name => {
   assert.equal(name, 'react')
   return {
+    Fragment: 'Fragment',
     createElement: (type, props, ...children) => ({ type, props, children }),
     useState: initial => [initial, () => {}],
     useEffect: () => {},
@@ -40,9 +41,14 @@ plugin.apply({
 })
 const icon = mounted.get('sidebar.panellist')
 const panel = mounted.get('main')
+const quick = mounted.get('sidebar.session.action')
 assert.equal(icon.options.id, panel.options.key, 'sidebar entry must open its own panel')
+assert.equal(quick.options.id, 'superagent-quick-capture', 'sidebar quick capture action registered cleanly')
 assert.ok(icon.Component({ active: false, size: 18 }))
 assert.ok(panel.Component())
+const quickTree = quick.Component({ children: 'NEW', wide: true })
+assert.equal(quickTree.type, 'Fragment', 'sidebar.session.action must return Fragment without wrapper div')
+assert.equal(quickTree.children[0], 'NEW')
 for (const cleanup of dispose.reverse()) cleanup()
 assert.equal(mounted.size, 0, 'plugin teardown removes its slots')
 console.log('Scoped bundle registration and slot lifecycle OK')

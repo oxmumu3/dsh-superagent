@@ -2,8 +2,9 @@
 //
 // 手写 CJS + window.__ModuleLoader__ 包装，零构建。**不能出现 ESM 的 export。**
 // 挂载点按宿主槽位目录的精确契约：
-//   sidebar.panellist  list  注册 { id, order, label }，组件收 { size, active }
-//   main               keyed 注册 { key }，组件是面板本体
+//   sidebar.panellist        list   注册 { id, order, label }，组件收 { size, active }
+//   sidebar.session.action   hoc    包裹左栏「新建会话」行，提供就地快速记任务入口（仅 Super Agent 使用）
+//   main                     keyed  注册 { key }，组件是面板本体（含 RC3 workspace.picker 工厂槽位接入）
 // 数据走宿主 HTTP 路由 /api/superagent/view、/api/superagent/action、
 // /api/superagent/card（见 lib/route.js）。
 
@@ -18,7 +19,15 @@ window.__ModuleLoader__.load({
     var ACTION_URL = '/api/superagent/action'
     var CARD_URL = '/api/superagent/card'
     // S4：「打开会话」优先用宿主的 uiWorkspace；拿不到就退回复制会话编号。
-    var hostUi = { openSession: null, canOpen: false }
+    // RC3：补充 workspaces / sessions / slots，用来渲染 sidebar.session.action 与 workspace.picker。
+    var hostUi = { openSession: null, canOpen: false, workspaces: null, sessions: null, slots: null }
+    var boardListeners = new Set()
+
+    function notifyBoardUpdated() {
+      boardListeners.forEach(function (fn) {
+        try { fn() } catch (error) {}
+      })
+    }
 
     function loadReact() {
       try {
@@ -27,6 +36,85 @@ window.__ModuleLoader__.load({
       } catch (error) {
         return null
       }
+    }
+
+    function loadReactDom() {
+      try {
+        var mod = require('react-dom')
+        return mod && mod.createPortal ? mod : mod && mod.default
+      } catch (error) {
+        return null
+      }
+    }
+
+    function normalizeDir(path) {
+      return String(path || '').replace(/\/+$/, '')
+    }
+
+    function canUseWorkspacePicker(props) {
+      return Boolean(
+        hostUi.slots
+        && typeof hostUi.slots.factory === 'function'
+        && hostUi.slots.factory('workspace.picker')
+        && props
+        && typeof props.renderFactorySlot === 'function'
+      )
+    }
+
+    function listHostWorkspaceItems() {
+      var list = hostUi.workspaces && hostUi.workspaces.list
+      if (!list || typeof list.getSnapshot !== 'function') return []
+      var snap = list.getSnapshot()
+      var items = (snap && Array.isArray(snap.items)) ? snap.items : []
+      return items.filter(function (row) {
+        return row && (row.path || row.directory)
+      }).map(function (row) {
+        var p = row.path || row.directory
+        var dir = normalizeDir(p) || String(p)
+        var parts = dir.split('/')
+        var fallbackName = parts[parts.length - 1] || dir
+        return {
+          id: row.workspaceId || row.id || dir,
+          path: p,
+          label: row.title || row.name || fallbackName,
+        }
+      })
+    }
+
+    function pathByWorkspaceId(wsId) {
+      if (!wsId) return null
+      var items = listHostWorkspaceItems()
+      for (var i = 0; i < items.length; i += 1) {
+        if (items[i].id === wsId) return items[i].path
+      }
+      return null
+    }
+
+    function workspaceIdByPath(wsPath) {
+      var target = normalizeDir(wsPath)
+      if (!target) return undefined
+      var items = listHostWorkspaceItems()
+      for (var i = 0; i < items.length; i += 1) {
+        if (normalizeDir(items[i].path) === target) return items[i].id
+      }
+      return undefined
+    }
+
+    function activeForegroundWorkspacePath() {
+      var list = hostUi.sessions && hostUi.sessions.list
+      if (!list || typeof list.getSnapshot !== 'function') return null
+      var snap = list.getSnapshot()
+      var byId = snap && snap.byId
+      if (!byId || typeof byId !== 'object') return null
+      var keys = Object.keys(byId)
+      for (var i = 0; i < keys.length; i += 1) {
+        var row = byId[keys[i]]
+        if (row && row.retainedBy && (row.retainedBy.mainView || 0) > 0 && row.workspaceId) {
+          var p = pathByWorkspaceId(row.workspaceId)
+          if (p) return p
+        }
+      }
+      return null
     }
 
     var GROUPS = ['waiting', 'running', 'queued', 'later', 'doneToday']
@@ -287,6 +375,35 @@ window.__ModuleLoader__.load({
       '.sa2-toast{position:fixed;left:50%;bottom:28px;z-index:100;transform:translateX(-50%);display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:10px 16px;border-radius:999px;background:var(--sa2-ink);color:var(--sa2-bg);font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.18);animation:sa2slide .3s var(--sa2-ease)}',
       '.sa2-toast button{flex:none;color:var(--sa2-bg);border-bottom:1px solid color-mix(in srgb,var(--sa2-bg) 50%,transparent);white-space:nowrap}',
       '.sa2-toast span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.sa2-chip-x{flex:none;height:22px;padding:0 8px;border-radius:11px;font-size:11px;color:var(--sa2-ink2);border:1px solid var(--sa2-line2);background:transparent;white-space:nowrap}',
+      '.sa2-chip-x:hover{color:var(--sa2-ink);background:var(--sa2-hover)}',
+      '.sa2-qa-trigger{flex:none;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--dsw-radius-md,8px);border:0.5px solid transparent;background:transparent;color:var(--dsw-alias-label-primary,inherit);cursor:pointer;padding:0;margin:0;transition:background-color .14s ease,border-color .14s ease}',
+      '.sa2-qa-trigger:hover{background-color:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}',
+      '.sa2-qa-trigger:focus-visible{outline:2px solid var(--dsw-alias-link,#4d6bfe);outline-offset:1px}',
+      '.sa2-qa-trigger.wide{width:38px;height:38px;border:0.5px solid var(--dsw-alias-border-l3,rgba(127,127,127,.22));background:var(--dsw-alias-button-elevated-fill,rgba(255,255,255,.04));box-shadow:0 1px 2px rgba(0,0,0,.04)}',
+      '.sa2-qa-trigger.wide:hover{background-color:var(--dsw-alias-button-floating-hover,var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12)))}',
+      '.sa2-qa-backdrop{position:fixed;inset:0;z-index:900;background:rgba(15,15,14,.32);display:flex;align-items:flex-start;justify-content:center;padding:min(14vh,120px) 16px 24px;color-scheme:light dark;font-family:var(--dsw-font-family,-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif)}',
+      '.sa2-qa-card{width:min(460px,100%);background:var(--dsw-alias-bg-layer-2,#ffffff);color:var(--dsw-alias-label-primary,#141413);border:1px solid var(--dsw-alias-border-l3,rgba(20,20,19,.16));border-radius:16px;padding:18px 20px 16px;box-shadow:0 18px 50px rgba(0,0,0,.24);box-sizing:border-box}',
+      '.sa2-qa-card *{box-sizing:border-box}',
+      '.sa2-qa-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}',
+      '.sa2-qa-head h3{margin:0;font-size:15px;font-weight:600;line-height:22px;color:var(--dsw-alias-label-primary,#141413)}',
+      '.sa2-qa-close{width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:var(--dsw-alias-label-secondary,#6e6d68);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px}',
+      '.sa2-qa-close:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12));color:var(--dsw-alias-label-primary,#141413)}',
+      '.sa2-qa-input{width:100%;height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--dsw-alias-border-l3,rgba(20,20,19,.18));background:var(--dsw-alias-bg-layer-1,transparent);color:var(--dsw-alias-label-primary,#141413);font:14px/20px inherit;outline:none}',
+      '.sa2-qa-input:focus{border-color:var(--dsw-alias-link,#4d6bfe)}',
+      '.sa2-qa-wsrow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px}',
+      '.sa2-qa-wslabel{font-size:12px;color:var(--dsw-alias-label-secondary,#6e6d68);margin-right:2px}',
+      '.sa2-qa-wsbtn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:15px;border:1px solid var(--dsw-alias-border-l3,rgba(20,20,19,.18));background:var(--dsw-alias-button-elevated-fill,transparent);color:var(--dsw-alias-label-primary,#141413);font-size:12.5px;cursor:pointer;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.sa2-qa-wsbtn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}',
+      '.sa2-qa-unset{height:28px;padding:0 10px;border-radius:14px;border:1px solid var(--dsw-alias-border-l2,rgba(20,20,19,.12));background:transparent;color:var(--dsw-alias-label-secondary,#6e6d68);font-size:12px;cursor:pointer}',
+      '.sa2-qa-unset[aria-pressed="true"]{color:var(--dsw-alias-label-primary,#141413);border-color:var(--dsw-alias-label-primary,#141413);font-weight:500}',
+      '.sa2-qa-select{height:30px;padding:0 10px;border-radius:10px;border:1px solid var(--dsw-alias-border-l3,rgba(20,20,19,.18));background:var(--dsw-alias-bg-layer-1,transparent);color:var(--dsw-alias-label-primary,#141413);font-size:12.5px;max-width:220px}',
+      '.sa2-qa-err{margin:10px 0 0;font-size:12.5px;color:var(--dsw-alias-state-error-primary,#dc2626)}',
+      '.sa2-qa-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:16px}',
+      '.sa2-qa-cancel,.sa2-qa-submit{height:32px;padding:0 14px;border-radius:16px;font-size:13px;cursor:pointer;border:1px solid var(--dsw-alias-border-l3,rgba(20,20,19,.18));background:transparent;color:var(--dsw-alias-label-primary,#141413)}',
+      '.sa2-qa-submit{background:var(--dsw-alias-label-primary,#141413);border-color:var(--dsw-alias-label-primary,#141413);color:var(--dsw-alias-bg-base,#faf9f5);font-weight:500}',
+      '.sa2-qa-submit:disabled{opacity:.42;cursor:default}',
+      '@media (prefers-color-scheme:dark){.sa2-qa-card{background:var(--dsw-alias-bg-layer-2,#1f1f23);color:var(--dsw-alias-label-primary,#f3f2ed);border-color:var(--dsw-alias-border-l3,rgba(255,255,255,.16))}.sa2-qa-submit{background:var(--dsw-alias-label-primary,#f3f2ed);border-color:var(--dsw-alias-label-primary,#f3f2ed);color:var(--dsw-alias-bg-base,#141413)}}',
       '@container sa2 (max-width:700px){.sa2-inner{padding:48px 16px 90px}.sa2-tabs{left:-16px;right:-16px;padding:8px 16px}.sa2-h1{font-size:23px;line-height:32px}.sa2-say{padding-left:18px}.sa2-say input{font-size:14px}.sa2-send{height:40px;padding:0 18px}}',
       '@container sa2 (max-width:640px){.sa2-field{grid-template-columns:repeat(5,minmax(0,1fr))}.sa2-zone{padding:10px 4px;text-align:center}.sa2-zone-k{flex-direction:column;align-items:center;gap:0;font-size:11px;line-height:16px}.sa2-zone-k b{font-size:20px;line-height:26px}.sa2-marks,.sa2-peek{display:none}.sa2-hint{display:none}.sa2-sec{margin-top:32px}.sa2-row.is-wait{margin:0 -8px;padding-left:8px;padding-right:8px}}',
       '@container sa2 (max-width:560px){.sa2-say{flex-wrap:wrap;border-radius:20px;padding:10px 10px 10px 16px}.sa2-say input{flex:1 1 100%;height:36px}.sa2-chip{margin-left:2px}.sa2-send{margin-left:auto}.sa2-pending-head{flex-wrap:wrap}.sa2-pending-hint{flex-basis:100%;order:3;white-space:normal}.sa2-pending-go{order:2;margin-left:auto}.sa2-pending-main{flex-basis:100%}.sa2-pending-acts{width:100%;justify-content:flex-start;margin-left:0}.sa2-sheet{padding:22px 18px 60px}}',
@@ -389,7 +506,263 @@ window.__ModuleLoader__.load({
       }))
     }
 
-    function Panel() {
+    function QuickCaptureAction(props) {
+      props = props || {}
+      var React = loadReact()
+      if (!React) return null
+      var hh = React.createElement
+      var Frag = React.Fragment || 'react.fragment'
+      var openState = React.useState(false)
+      var open = openState[0]
+      var setOpen = openState[1]
+      var textState = React.useState('')
+      var text = textState[0]
+      var setText = textState[1]
+      var wsPathState = React.useState(undefined)
+      var wsPath = wsPathState[0]
+      var setWsPath = wsPathState[1]
+      var wsPickerState = React.useState(false)
+      var wsPickerOpen = wsPickerState[0]
+      var setWsPickerOpen = wsPickerState[1]
+      var busyState = React.useState(false)
+      var busy = busyState[0]
+      var setBusy = busyState[1]
+      var errState = React.useState(null)
+      var err = errState[0]
+      var setErr = errState[1]
+      var tickState = React.useState(0)
+      var setTick = tickState[1]
+      var wsBtnRef = React.useRef(null)
+
+      React.useEffect(function () {
+        ensureStyle()
+        var bump = function () { setTick(function (v) { return v + 1 }) }
+        var unsubWs = hostUi.workspaces && hostUi.workspaces.list && typeof hostUi.workspaces.list.subscribe === 'function'
+          ? hostUi.workspaces.list.subscribe(bump)
+          : null
+        var unsubFactory = hostUi.slots && typeof hostUi.slots.subscribeFactory === 'function'
+          ? hostUi.slots.subscribeFactory('workspace.picker', bump)
+          : null
+        return function () {
+          if (typeof unsubWs === 'function') unsubWs()
+          if (typeof unsubFactory === 'function') unsubFactory()
+        }
+      }, [])
+
+      React.useEffect(function () {
+        if (!open || typeof window === 'undefined' || typeof window.addEventListener !== 'function') return
+        function onKey(event) {
+          if (event && event.key === 'Escape' && !wsPickerOpen) setOpen(false)
+        }
+        window.addEventListener('keydown', onKey)
+        return function () { window.removeEventListener('keydown', onKey) }
+      }, [open, wsPickerOpen])
+
+      function openCapture() {
+        setErr(null)
+        setWsPickerOpen(false)
+        setWsPath(function (prev) {
+          if (prev !== undefined) return prev
+          var fg = activeForegroundWorkspacePath()
+          return fg || undefined
+        })
+        setOpen(true)
+      }
+
+      function closeCapture() {
+        setWsPickerOpen(false)
+        setErr(null)
+        setOpen(false)
+      }
+
+      function submitCapture(event) {
+        if (event && typeof event.preventDefault === 'function') event.preventDefault()
+        var trimmed = String(text || '').trim()
+        if (!trimmed || busy) return
+        var body = { action: 'create', text: trimmed }
+        if (wsPath === null) {
+          body.workspacePath = null
+          body.workspaceExplicit = true
+        } else if (typeof wsPath === 'string' && wsPath) {
+          body.workspacePath = wsPath
+          body.workspaceExplicit = true
+        }
+        setBusy(true)
+        setErr(null)
+        fetch(ACTION_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify(body),
+        }).then(function (res) {
+          return res.json().catch(function () { return {} }).then(function (data) {
+            return { ok: res.ok, status: res.status, data: data }
+          })
+        }).then(function (result) {
+          setBusy(false)
+          if (result.ok) {
+            setText('')
+            setWsPickerOpen(false)
+            setOpen(false)
+            notifyBoardUpdated()
+            return
+          }
+          setErr(String((result.data && result.data.error) || '没有记下来'))
+        }).catch(function (error) {
+          setBusy(false)
+          setErr(String((error && error.message) || error))
+        })
+      }
+
+      var wide = !!props.wide
+      var iconSize = wide ? 14 : 18
+      var triggerBtn = hh('button', {
+        key: 'sa2-qa-trigger',
+        type: 'button',
+        className: 'sa2-qa-trigger' + (wide ? ' wide' : ''),
+        title: '随手记任务',
+        'aria-label': '随手记任务',
+        'aria-expanded': open ? 'true' : 'false',
+        onClick: function () { if (open) closeCapture(); else openCapture() },
+      }, hh('svg', {
+        width: iconSize,
+        height: iconSize,
+        viewBox: '0 0 16 16',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 1.5,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': 'true',
+      },
+        hh('rect', { x: 2.5, y: 2.5, width: 11, height: 11, rx: 2.5 }),
+        hh('path', { d: 'M8 5.2v5.6M5.2 8h5.6' }),
+      ))
+
+      var usePicker = canUseWorkspacePicker(props)
+      var hostWorkspaces = listHostWorkspaceItems()
+      var resolvedWsLabel = wsPath === null
+        ? '先不定'
+        : wsPath
+          ? (function () {
+              for (var i = 0; i < hostWorkspaces.length; i += 1) {
+                if (normalizeDir(hostWorkspaces[i].path) === normalizeDir(wsPath)) return hostWorkspaces[i].label
+              }
+              return wsLabel(wsPath)
+            })()
+          : '默认工作区'
+      var selectedWsId = typeof wsPath === 'string' && wsPath ? workspaceIdByPath(wsPath) : undefined
+
+      var modalContent = open ? hh('div', {
+        key: 'sa2-qa-modal',
+        className: 'sa2-qa-backdrop',
+        onClick: function (event) {
+          if (event && event.target === event.currentTarget && !wsPickerOpen) closeCapture()
+        },
+      },
+        hh('div', {
+          className: 'sa2-qa-card',
+          role: 'dialog',
+          'aria-modal': 'true',
+          'aria-label': '随手记一件事',
+        },
+          hh('div', { className: 'sa2-qa-head' },
+            hh('h3', null, '随手记一件事'),
+            hh('button', {
+              type: 'button',
+              className: 'sa2-qa-close',
+              'aria-label': '关闭',
+              onClick: closeCapture,
+            }, '×'),
+          ),
+          hh('form', { onSubmit: submitCapture },
+            hh('input', {
+              autoFocus: true,
+              className: 'sa2-qa-input',
+              value: text,
+              placeholder: '记一件事，回车落板…',
+              'aria-label': '任务内容',
+              disabled: busy,
+              onChange: function (event) {
+                setText(event.target.value)
+                if (err) setErr(null)
+              },
+            }),
+            hh('div', { className: 'sa2-qa-wsrow' },
+              hh('span', { className: 'sa2-qa-wslabel' }, '在哪做'),
+              usePicker
+                ? hh('button', {
+                    ref: wsBtnRef,
+                    type: 'button',
+                    className: 'sa2-qa-wsbtn',
+                    disabled: busy,
+                    onClick: function () { setWsPickerOpen(function (v) { return !v }) },
+                  }, resolvedWsLabel)
+                : hh('select', {
+                    className: 'sa2-qa-select',
+                    'aria-label': '选择工作区',
+                    disabled: busy,
+                    value: wsPath === null ? '__none__' : (wsPath || ''),
+                    onChange: function (event) {
+                      var val = event.target.value
+                      setWsPath(val === '__none__' ? null : (val || undefined))
+                    },
+                  },
+                    hh('option', { value: '' }, '默认工作区'),
+                    hh('option', { value: '__none__' }, '先不定'),
+                    hostWorkspaces.map(function (row) {
+                      return hh('option', { key: row.id || row.path, value: row.path }, row.label)
+                    }),
+                  ),
+              usePicker ? props.renderFactorySlot('workspace.picker', {
+                open: wsPickerOpen,
+                anchorRef: wsBtnRef,
+                selectedId: selectedWsId,
+                onPick: function (wsId) {
+                  var nextPath = pathByWorkspaceId(wsId)
+                  if (nextPath) setWsPath(nextPath)
+                  setWsPickerOpen(false)
+                },
+                onClose: function () { setWsPickerOpen(false) },
+              }) : null,
+              hh('button', {
+                type: 'button',
+                className: 'sa2-qa-unset',
+                'aria-pressed': wsPath === null ? 'true' : 'false',
+                disabled: busy,
+                onClick: function () {
+                  setWsPickerOpen(false)
+                  setWsPath(null)
+                },
+              }, '先不定'),
+            ),
+            err ? hh('p', { className: 'sa2-qa-err', role: 'alert' }, err) : null,
+            hh('div', { className: 'sa2-qa-foot' },
+              hh('button', {
+                type: 'button',
+                className: 'sa2-qa-cancel',
+                disabled: busy,
+                onClick: closeCapture,
+              }, '取消'),
+              hh('button', {
+                type: 'submit',
+                className: 'sa2-qa-submit',
+                disabled: busy || !String(text || '').trim(),
+              }, busy ? '正在记…' : '记下'),
+            ),
+          ),
+        ),
+      ) : null
+
+      var ReactDom = open ? loadReactDom() : null
+      var modalNode = (modalContent && ReactDom && typeof ReactDom.createPortal === 'function' && typeof document !== 'undefined' && document.body)
+        ? ReactDom.createPortal(modalContent, document.body)
+        : modalContent
+
+      return hh(Frag, null, props.children || null, triggerBtn, modalNode)
+    }
+
+    function Panel(props) {
+      props = props || {}
       var React = loadReact()
       if (!React) return null
       var hh = React.createElement
@@ -423,8 +796,12 @@ window.__ModuleLoader__.load({
       })
       var S = state[0]
       var setS = state[1]
+      var wsTickState = React.useState(0)
+      var setWsTick = wsTickState[1]
       var sectionRefs = React.useRef({})
       var fieldRef = React.useRef(null)
+      var pickerAnchorRef = React.useRef(null)
+      var nativeTargetRef = React.useRef(null)
 
       function patch(next) {
         setS(function (prev) {
@@ -489,10 +866,10 @@ window.__ModuleLoader__.load({
             return false
           }
           patch(function (prev) {
-            if (fromPicker && prev.picker) {
+            if (fromPicker && prev.picker && !prev.picker.native) {
               return { busy: null, picker: Object.assign({}, prev.picker, { error: message }) }
             }
-            return { busy: null, rowError: { id: id, message: message } }
+            return { busy: null, picker: null, rowError: { id: id, message: message } }
           })
           return false
         }).catch(function (error) {
@@ -502,13 +879,22 @@ window.__ModuleLoader__.load({
         })
       }
 
-      function openPicker(target, id, mode) {
-        patch({ picker: { target: target, id: id || null, mode: mode || 'workspace', other: false, path: '', error: null } })
+      function openPicker(target, id, mode, anchorEl) {
+        var meta = { target: target, id: id || null, mode: mode || 'workspace' }
+        if (anchorEl && canUseWorkspacePicker(props)) {
+          pickerAnchorRef.current = anchorEl
+          nativeTargetRef.current = meta
+          patch({ picker: Object.assign({}, meta, { native: true, open: true, other: false, path: '', error: null }) })
+          return
+        }
+        nativeTargetRef.current = null
+        patch({ picker: Object.assign({}, meta, { native: false, open: true, other: false, path: '', error: null }) })
       }
 
-      function pick(path) {
-        var picker = S.picker
+      function pick(path, explicitMeta) {
+        var picker = explicitMeta || S.picker || nativeTargetRef.current
         if (!picker) return
+        nativeTargetRef.current = null
         if (picker.target === 'composer') {
           patch({ composerWorkspace: path, picker: null, composerError: null })
           return
@@ -833,13 +1219,13 @@ window.__ModuleLoader__.load({
         })
       }
 
-      function doAction(card, definition) {
+      function doAction(card, definition, anchorEl) {
         if (definition.needsText) {
           openForm(card, definition)
           return
         }
         if (definition.action === 'start' && card.needsWorkspace) {
-          openPicker('card', card.id, 'start')
+          openPicker('card', card.id, 'start', anchorEl)
           return
         }
         if (definition.action === 'answer') {
@@ -898,6 +1284,23 @@ window.__ModuleLoader__.load({
           if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible)
         }
       }, [S.refresh])
+
+      React.useEffect(function () {
+        var onBoard = function () { patch(function (prev) { return { refresh: prev.refresh + 1 } }) }
+        var onWs = function () { setWsTick(function (v) { return v + 1 }) }
+        boardListeners.add(onBoard)
+        var unsubWs = hostUi.workspaces && hostUi.workspaces.list && typeof hostUi.workspaces.list.subscribe === 'function'
+          ? hostUi.workspaces.list.subscribe(onWs)
+          : null
+        var unsubFactory = hostUi.slots && typeof hostUi.slots.subscribeFactory === 'function'
+          ? hostUi.slots.subscribeFactory('workspace.picker', onWs)
+          : null
+        return function () {
+          boardListeners.delete(onBoard)
+          if (typeof unsubWs === 'function') unsubWs()
+          if (typeof unsubFactory === 'function') unsubFactory()
+        }
+      }, [])
 
       React.useEffect(function () {
         var raf = 0
@@ -977,7 +1380,7 @@ window.__ModuleLoader__.load({
           type: 'button',
           className: 'sa2-btn' + (definition.primary ? ' pri' : ''),
           disabled: S.busy === card.id,
-          onClick: function () { doAction(card, definition) },
+          onClick: function (event) { doAction(card, definition, event && event.currentTarget) },
         }, definition.label)
       }
 
@@ -1037,8 +1440,8 @@ window.__ModuleLoader__.load({
             className: 'sa2-ws',
             title: card.workspacePath,
             onClick: function (event) {
-              event.stopPropagation()
-              openPicker('card', card.id, 'workspace')
+              if (event && typeof event.stopPropagation === 'function') event.stopPropagation()
+              openPicker('card', card.id, 'workspace', event && event.currentTarget)
             },
           }, '在 ', hh('b', {}, card.workspaceLabel || wsLabel(card.workspacePath))))
         }
@@ -1077,7 +1480,7 @@ window.__ModuleLoader__.load({
               hh('button', {
                 type: 'button',
                 className: 'sa2-link',
-                onClick: function () { openPicker('card', card.id, 'workspace') },
+                onClick: function (event) { openPicker('card', card.id, 'workspace', event && event.currentTarget) },
               }, '选目录'),
             ) : null,
             renderForm(card),
@@ -1223,7 +1626,13 @@ window.__ModuleLoader__.load({
       }
 
       function renderComposer() {
+        var usePicker = canUseWorkspacePicker(props)
         var selected = S.composerWorkspace
+        var resolvedPath = selected === null
+          ? null
+          : selected
+            ? selected
+            : (S.view && S.view.defaultWorkspace) || null
         var label = selected === null
           ? '先不定'
           : selected
@@ -1247,9 +1656,21 @@ window.__ModuleLoader__.load({
           hh('button', {
             type: 'button',
             className: 'sa2-chip',
-            onClick: function () { openPicker('composer') },
+            onClick: function (event) { openPicker('composer', null, 'workspace', event && event.currentTarget) },
             title: selected || (S.view && S.view.defaultWorkspace) || '先不定',
           }, '在哪做 · ', hh('b', null, label)),
+          usePicker && resolvedPath
+            ? hh('button', {
+                type: 'button',
+                className: 'sa2-chip-x',
+                title: '改为先不定工作区',
+                'aria-label': '改为先不定工作区',
+                onClick: function () {
+                  nativeTargetRef.current = null
+                  patch({ composerWorkspace: null, picker: null, composerError: null })
+                },
+              }, '先不定')
+            : null,
           hh('button', {
             type: 'submit',
             className: 'sa2-send',
@@ -1491,6 +1912,37 @@ window.__ModuleLoader__.load({
 
       function renderPicker() {
         var picker = S.picker
+        if (canUseWorkspacePicker(props) && (!picker || picker.native)) {
+          var meta = (picker && picker.native) ? picker : nativeTargetRef.current
+          var pickerOpen = Boolean(picker && picker.native && picker.open !== false)
+          var curPath = meta
+            ? (meta.target === 'composer'
+                ? (S.composerWorkspace === undefined ? (S.view && S.view.defaultWorkspace) : S.composerWorkspace)
+                : ((findCard(S.view, meta.id) || {}).workspacePath || null))
+            : null
+          return props.renderFactorySlot('workspace.picker', {
+            open: pickerOpen,
+            anchorRef: pickerAnchorRef,
+            selectedId: workspaceIdByPath(curPath),
+            onPick: function (wsId) {
+              var activeMeta = nativeTargetRef.current || (picker && picker.native ? picker : null)
+              var p = pathByWorkspaceId(wsId)
+              if (p && activeMeta) {
+                pick(p, activeMeta)
+              } else {
+                nativeTargetRef.current = null
+                patch({ picker: null })
+              }
+            },
+            onClose: function () {
+              patch(function (prev) {
+                return prev.picker && prev.picker.native
+                  ? { picker: Object.assign({}, prev.picker, { open: false }) }
+                  : {}
+              })
+            },
+          })
+        }
         if (!picker) return null
         var list = (S.view && S.view.workspaces) || []
         return hh('div', {
@@ -1755,16 +2207,41 @@ window.__ModuleLoader__.load({
     }
 
     function apply(ctx) {
+      hostUi.slots = ctx && ctx.slots ? ctx.slots : null
+      ctx.effect(function () {
+        hostUi.slots = ctx && ctx.slots ? ctx.slots : null
+        ensureStyle()
+        return function () {
+          hostUi.slots = null
+          boardListeners.clear()
+        }
+      })
       function bindUiWorkspace(service) {
         if (service && typeof service.openSession === 'function') {
           hostUi.openSession = id => service.openSession(id)
           hostUi.canOpen = true
         }
       }
+      function bindWorkspaces(service) {
+        hostUi.workspaces = service || null
+      }
+      function bindSessions(service) {
+        hostUi.sessions = service || null
+      }
       try {
         bindUiWorkspace(ctx.get && ctx.get('uiWorkspace', false))
       } catch (error) {
         // 服务还没挂上，等注入。
+      }
+      try {
+        bindWorkspaces(ctx.get && ctx.get('workspaces', false))
+      } catch (error) {
+        // RC2 或无工作区服务时退回台账列表。
+      }
+      try {
+        bindSessions(ctx.get && ctx.get('sessions', false))
+      } catch (error) {
+        // 拿不到前台会话时按默认工作区建卡。
       }
       try {
         if (typeof ctx.inject === 'function') {
@@ -1775,10 +2252,25 @@ window.__ModuleLoader__.load({
               hostUi.canOpen = false
             }
           }))
+          ctx.effect(() => ctx.inject(['workspaces'], scope => {
+            bindWorkspaces(scope && (scope.workspaces || (scope.get && scope.get('workspaces', false))))
+            return function () {
+              hostUi.workspaces = null
+            }
+          }))
+          ctx.effect(() => ctx.inject(['sessions'], scope => {
+            bindSessions(scope && (scope.sessions || (scope.get && scope.get('sessions', false))))
+            return function () {
+              hostUi.sessions = null
+            }
+          }))
         }
       } catch (error) {
-        // 没有 uiWorkspace 就用复制编号的退路。
+        // 没有对应服务时按旧行为降级。
       }
+      ctx.effect(() => ctx.slots.inject('sidebar.session.action', () => ctx.slots.register({
+        name: 'sidebar.session.action', id: 'superagent-quick-capture',
+      }, QuickCaptureAction)))
       ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
         name: 'main', key: PANEL_KEY,
       }, Panel)))

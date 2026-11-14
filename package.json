@@ -1,6 +1,6 @@
 {
   "name": "@oxmumu3/dsh-superagent",
-  "version": "0.2.0-preview.4",
+  "version": "0.2.0-preview.5",
   "private": false,
   "description": "Community task board for DeepSeek Harness with independent execution sessions and evidence-based review.",
   "type": "module",
@@ -71,6 +71,7 @@
         "@deepseek-ai/dsh-client-ui-renderer",
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-workspace",
         "@deepseek-ai/dsh-client-ui-plugin-manager"
       ],
       "external": []
