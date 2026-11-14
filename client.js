@@ -552,6 +552,57 @@ window.__ModuleLoader__.load({
       '.sa2-toast span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.sa2-chip-x{flex:none;height:24px;padding:0 9px;border-radius:999px;font-size:11.5px;color:var(--sa2-ink2);border:1px solid var(--sa2-line2);background:transparent;white-space:nowrap}',
       '.sa2-chip-x:hover{color:var(--sa2-ink);background:var(--sa2-hover)}',
+      // 0.3.0 智能总管：顶栏驾驶舱 / 选题仓库切换、AI 拆单分诊台、Codex 实时工位与待拍板卡片
+      '.sa2-surface-bar{display:inline-flex;align-items:center;gap:4px;margin-top:14px;padding:3px;border:1px solid var(--sa2-line2);border-radius:12px;background:var(--sa2-card)}',
+      '.sa2 .sa2-surf-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 13px;border-radius:9px;font-size:12.5px;font-weight:500;color:var(--sa2-ink2);white-space:nowrap;transition:background .16s var(--sa2-ease),color .16s var(--sa2-ease)}',
+      '.sa2 .sa2-surf-btn:hover{background:var(--sa2-hover);color:var(--sa2-ink)}',
+      '.sa2 .sa2-surf-btn[aria-pressed="true"]{background:var(--sa2-ink);color:var(--sa2-bg);font-weight:600}',
+      '.sa2-surf-cnt{font:600 11px/16px var(--sa2-mono);opacity:.82}',
+      '.sa2-triage{margin-top:16px;padding:12px 14px;border:1px solid var(--sa2-line2);border-radius:14px;background:var(--sa2-card);box-shadow:0 2px 14px rgba(0,0,0,.04);display:flex;flex-direction:column;gap:10px}',
+      '.sa2-triage:focus-within{border-color:var(--sa2-run);box-shadow:0 0 0 3px color-mix(in srgb,var(--sa2-run) 12%,transparent)}',
+      '.sa2-triage textarea{width:100%;min-width:0;min-height:46px;max-height:140px;resize:vertical;border:0;outline:0;background:none;font:14px/21px var(--sa2-sans);color:var(--sa2-ink)}',
+      '.sa2-triage textarea::placeholder{color:var(--sa2-ink3)}',
+      '.sa2-triage-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--sa2-line)}',
+      '.sa2-triage-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}',
+      '.sa2 .sa2-btn.ai{background:var(--sa2-run);border-color:transparent;color:#fff;font-weight:600}',
+      '.sa2 .sa2-btn.ai:hover{opacity:.9}',
+      '.sa2-plan{margin-top:14px;padding:14px 16px;border:1px solid color-mix(in srgb,var(--sa2-run) 42%,var(--sa2-line2));border-radius:14px;background:var(--sa2-card);box-shadow:0 6px 24px rgba(0,0,0,.06)}',
+      '.sa2-plan-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--sa2-line)}',
+      '.sa2-plan-hd h3{font:600 14px/20px var(--sa2-sans);color:var(--sa2-ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
+      '.sa2-plan-list{display:flex;flex-direction:column;gap:10px;margin-top:12px}',
+      '.sa2-plan-item{padding:11px 12px;border:1px solid var(--sa2-line);border-radius:11px;background:var(--sa2-sub);display:flex;flex-direction:column;gap:8px;min-width:0}',
+      '.sa2-plan-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}',
+      '.sa2-plan-title{flex:1 1 200px;min-width:0;height:32px;padding:0 10px;border:1px solid var(--sa2-line2);border-radius:8px;background:var(--sa2-card);font:600 13.5px/20px var(--sa2-sans);color:var(--sa2-ink);outline:0}',
+      '.sa2-plan-title:focus{border-color:var(--sa2-run)}',
+      '.sa2-plan-ws{height:30px;max-width:220px;padding:0 8px;border:1px solid var(--sa2-line2);border-radius:8px;background:var(--sa2-card);font:12px/18px var(--sa2-sans);color:var(--sa2-ink)}',
+      '.sa2-plan-runners{display:flex;align-items:center;gap:6px;flex-wrap:wrap}',
+      '.sa2 .sa2-rpill{height:26px;padding:0 10px;border:1px solid var(--sa2-line2);border-radius:999px;background:var(--sa2-card);font-size:11.5px;line-height:24px;color:var(--sa2-ink2);white-space:nowrap}',
+      '.sa2 .sa2-rpill[aria-pressed="true"]{background:var(--sa2-ink);border-color:var(--sa2-ink);color:var(--sa2-bg);font-weight:600}',
+      '.sa2 .sa2-rpill:disabled{opacity:.4;cursor:not-allowed}',
+      '.sa2-plan-why{font-size:12px;line-height:17px;color:var(--sa2-ink3)}',
+      '.sa2-plan-cl{display:flex;flex-direction:column;gap:4px;font-size:12px;line-height:18px;color:var(--sa2-ink2)}',
+      '.sa2-plan-cl li{display:flex;align-items:center;gap:6px;min-width:0}',
+      '.sa2-plan-cl span{flex:1;min-width:0;overflow-wrap:anywhere}',
+      '.sa2-plan-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--sa2-line)}',
+      '.sa2-ck-sec{margin-top:26px}',
+      '.sa2-ck-hd{display:flex;align-items:baseline;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--sa2-line)}',
+      '.sa2-ck-hd h2{font:600 15px/22px var(--sa2-sans);color:var(--sa2-ink);display:flex;align-items:center;gap:8px}',
+      '.sa2-ck-hd .sa2-hint{margin-left:auto}',
+      '.sa2-live-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:12px}',
+      '.sa2-live-card{padding:12px 14px;border:1px solid var(--sa2-line2);border-top:2.5px solid var(--sa2-run);border-radius:12px;background:var(--sa2-card);display:flex;flex-direction:column;gap:7px;min-width:0}',
+      '.sa2-live-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;min-width:0}',
+      '.sa2-live-card-top .sa2-title{flex:1 1 0%;min-width:0}',
+      '.sa2-live-card-top .sa2-runner-tag{flex:0 0 auto;max-width:140px}',
+      '.sa2-live-card-acts{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:auto;padding-top:2px}',
+      '.sa2-runner-tag{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:999px;font:600 11px/17px var(--sa2-mono);border:1px solid var(--sa2-line2);background:var(--sa2-sub);color:var(--sa2-ink2);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}',
+      '.sa2-runner-tag.codex{color:var(--sa2-run);border-color:color-mix(in srgb,var(--sa2-run) 40%,var(--sa2-line));background:color-mix(in srgb,var(--sa2-run) 9%,var(--sa2-card))}',
+      '.sa2-live-step{display:flex;align-items:flex-start;gap:6px;font-size:12px;line-height:17px;color:var(--sa2-ink2);overflow-wrap:anywhere}',
+      '.sa2-live-step b{flex:none;width:6px;height:6px;margin-top:6px;border-radius:50%;background:var(--sa2-run);box-shadow:0 0 0 3px color-mix(in srgb,var(--sa2-run) 18%,transparent)}',
+      '.sa2-dec-summary{margin-top:8px;padding:9px 11px;border-radius:9px;background:var(--sa2-sub);font-size:12.5px;line-height:19px;color:var(--sa2-ink);white-space:pre-wrap;overflow-wrap:anywhere}',
+      '.sa2-dec-files{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}',
+      '.sa2-dec-file{padding:1px 7px;border:1px solid var(--sa2-line2);border-radius:6px;background:var(--sa2-card);font:11px/17px var(--sa2-mono);color:var(--sa2-ink2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.sa2-calm{margin-top:20px;padding:18px 18px;border:1px dashed var(--sa2-line2);border-radius:14px;background:var(--sa2-card);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}',
+      '.sa2-calm p{font-size:13px;line-height:20px;color:var(--sa2-ink2)}',
       '.sa2-qa-trigger{flex:none;width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--dsw-radius-md,8px);border:0.5px solid transparent;background:transparent;color:var(--dsw-alias-label-primary,inherit);cursor:pointer;padding:0;margin:0;transition:background-color .14s ease,border-color .14s ease}',
       '.sa2-qa-trigger:hover{background-color:var(--dsw-alias-interactive-bg-hover,rgba(127,127,127,.12))}',
       '.sa2-qa-trigger:focus-visible{outline:2px solid var(--dsw-alias-link,#4d6bfe);outline-offset:1px}',
@@ -582,7 +633,7 @@ window.__ModuleLoader__.load({
       '@container sa2 (max-width:700px){.sa2-inner{padding:48px 16px 90px}.sa2-tabs{left:-16px;right:-16px;padding:8px 16px}.sa2-h1{font-size:22px;line-height:31px}.sa2-say input{font-size:14px}.sa2-ob-steps{grid-template-columns:1fr}.sa2-search{max-width:100%;flex:1 1 160px}}',
       '@container sa2 (max-width:640px){.sa2-field{grid-template-columns:repeat(5,minmax(0,1fr))}.sa2-zone{padding:10px 4px;text-align:center}.sa2-zone-k{flex-direction:column;align-items:center;gap:0;font-size:11px;line-height:16px}.sa2-zone-k b{font-size:20px;line-height:26px}.sa2-marks,.sa2-peek{display:none}.sa2-hint{display:none}.sa2-sec{margin-top:30px}.sa2-row.is-wait{padding:12px}}',
       '@container sa2 (max-width:560px){.sa2-pending-head{flex-wrap:wrap}.sa2-pending-hint{flex-basis:100%;order:3;white-space:normal}.sa2-pending-go{order:2;margin-left:auto}.sa2-pending-main{flex-basis:100%}.sa2-pending-acts{width:100%;justify-content:flex-start;margin-left:0}.sa2-drw-head,.sa2-drw-body,.sa2-drw-foot{padding-left:16px;padding-right:16px}}',
-      '@container sa2 (max-width:460px){.sa2-row{grid-template-columns:18px minmax(0,1fr);align-items:start}.sa2-acts{grid-column:2;justify-content:flex-start;margin-top:8px}.sa2-form{grid-column:1/-1}.sa2-err{grid-column:2}.sa2-asg{grid-template-columns:1fr}.sa2-asg .st{justify-self:start}.sa2 .sa2-send{margin-left:auto}}',
+      '@container sa2 (max-width:460px){.sa2-row{grid-template-columns:18px minmax(0,1fr);align-items:start}.sa2-acts{grid-column:2;justify-content:flex-start;margin-top:8px}.sa2-form{grid-column:1/-1}.sa2-err{grid-column:2}.sa2-asg{grid-template-columns:1fr}.sa2-asg .st{justify-self:start}.sa2 .sa2-send{margin-left:auto}.sa2-live-strip{grid-template-columns:1fr}.sa2-surface-bar{width:100%}.sa2 .sa2-surf-btn{flex:1;justify-content:center}}',
       '@media (max-width:640px){.sa2-sheet{width:100%;border-left:0}.sa2-pop{padding:12px}.sa2-toast{bottom:18px}}',
       '@media (max-width:460px){.sa2-row{grid-template-columns:18px minmax(0,1fr)}.sa2-acts{grid-column:2;justify-content:flex-start;margin-top:8px}.sa2-form{grid-column:1/-1}.sa2-err{grid-column:2}}',
     ].join('')
@@ -975,6 +1026,11 @@ window.__ModuleLoader__.load({
         ventsOpen: false,
         drawer: null,
         toast: null,
+        surface: null,
+        triageBusy: false,
+        triagePlan: null,
+        triageError: null,
+        triageCommitBusy: false,
       })
       var S = state[0]
       var setS = state[1]
@@ -1177,6 +1233,144 @@ window.__ModuleLoader__.load({
         var path = String(picker && picker.path || '').trim()
         if (!path) return
         pick(path)
+      }
+
+      function hostWorkspacePaths() {
+        return listHostWorkspaceItems(hookWsRef.current)
+          .map(function (row) { return row && row.path })
+          .filter(Boolean)
+      }
+
+      function triageSample(text) {
+        patch({ composer: text, triageError: null, composerError: null })
+      }
+
+      function runTriagePlan(overrideText) {
+        var text = String(overrideText !== undefined ? overrideText : (S.composer || '')).trim()
+        if (!text) return
+        var selectedWs = typeof S.composerWorkspace === 'string' && S.composerWorkspace
+          ? S.composerWorkspace
+          : (S.composerWorkspace === null ? null : ((S.view && S.view.defaultWorkspace) || null))
+        patch({ triageBusy: true, triageError: null, composerError: null })
+        post({
+          action: 'triage_plan',
+          text: text,
+          workspacePath: selectedWs,
+          extraDirs: hostWorkspacePaths(),
+        }).then(function (result) {
+          if (result.ok) {
+            var plan = (result.data && result.data.result) || null
+            patch({
+              view: result.data,
+              triageBusy: false,
+              triagePlan: plan,
+              triageError: null,
+            })
+            return
+          }
+          patch({
+            triageBusy: false,
+            triageError: String((result.data && result.data.error) || 'AI 分诊暂时不可用，可直接点「直接入队」'),
+          })
+        }).catch(function (error) {
+          patch({
+            triageBusy: false,
+            triageError: String((error && error.message) || error || 'AI 分诊失败'),
+          })
+        })
+      }
+
+      function updatePlanItem(index, nextPatch) {
+        patch(function (prev) {
+          if (!prev.triagePlan || !Array.isArray(prev.triagePlan.items)) return {}
+          var items = prev.triagePlan.items.map(function (item, idx) {
+            return idx === index ? Object.assign({}, item, nextPatch) : item
+          })
+          return { triagePlan: Object.assign({}, prev.triagePlan, { items: items }) }
+        })
+      }
+
+      function removePlanItem(index) {
+        patch(function (prev) {
+          if (!prev.triagePlan || !Array.isArray(prev.triagePlan.items)) return {}
+          var items = prev.triagePlan.items.filter(function (_item, idx) { return idx !== index })
+          return { triagePlan: items.length ? Object.assign({}, prev.triagePlan, { items: items }) : null }
+        })
+      }
+
+      function commitTriagePlan() {
+        var plan = S.triagePlan
+        if (!plan || !Array.isArray(plan.items) || !plan.items.length) return
+        var router = (S.view && S.view.router) || {}
+        patch({ triageCommitBusy: true, triageError: null })
+        post({
+          action: 'triage_commit',
+          items: plan.items,
+          autoQueue: S.composerAuto !== false,
+          startImmediate: router.mode === 'auto',
+        }).then(function (result) {
+          if (result.ok) {
+            var res = (result.data && result.data.result) || {}
+            var created = Array.isArray(res.created) ? res.created : []
+            var appended = Array.isArray(res.appended) ? res.appended : []
+            var started = Array.isArray(res.started) ? res.started : []
+            var parts = []
+            if (created.length) parts.push('新建 ' + created.length + ' 张卡')
+            if (appended.length) parts.push('追加 ' + appended.length + ' 条留言')
+            if (started.length) parts.push('后台已启动 ' + started.length + ' 件')
+            patch({
+              view: result.data,
+              composer: '',
+              triagePlan: null,
+              triageCommitBusy: false,
+              triageError: null,
+              toast: { text: parts.length ? ('✓ ' + parts.join('，')) : '已入库' },
+            })
+            return
+          }
+          patch({
+            triageCommitBusy: false,
+            triageError: String((result.data && result.data.error) || '落库失败，请检查目标目录是否存在'),
+          })
+        }).catch(function (error) {
+          patch({
+            triageCommitBusy: false,
+            triageError: String((error && error.message) || error || '落库失败'),
+          })
+        })
+      }
+
+      function runBacklogTriage() {
+        patch({ busy: 'backlog-triage', rowError: null })
+        post({
+          action: 'triage_backlog',
+          extraDirs: hostWorkspacePaths(),
+        }).then(function (result) {
+          if (result.ok) {
+            var res = (result.data && result.data.result) || {}
+            patch({
+              view: result.data,
+              busy: null,
+              toast: res.matchedCount
+                ? {
+                    text: '✨ 已为 ' + res.matchedCount + ' 张积压卡匹配工作区',
+                    undoBacklogSnapshot: res.snapshot || [],
+                  }
+                : { text: '未找到可直接自动匹配目录的积压卡，请手动点「选目录」' },
+            })
+            return
+          }
+          patch({ busy: null, rowError: { id: 'filter', message: String((result.data && result.data.error) || '智能整理失败') } })
+        }).catch(function (error) {
+          patch({ busy: null, rowError: { id: 'filter', message: String((error && error.message) || error) } })
+        })
+      }
+
+      function cycleRunner(card) {
+        var codexAvail = !!(S.view && S.view.orchestrator && S.view.orchestrator.codexAvailable)
+        var curr = card.preferredRunner || 'dsh'
+        var next = curr === 'codex' ? 'dsh' : (curr === 'dsh' ? (codexAvail ? 'codex' : 'manual') : 'dsh')
+        runAction(card.id, 'runner', next, { runner: next })
       }
 
       function create() {
@@ -1433,6 +1627,8 @@ window.__ModuleLoader__.load({
         var body = null
         if (toast.undoPending && toast.undoPending.length) {
           body = { action: 'pending_restore', items: toast.undoPending }
+        } else if (toast.undoBacklogSnapshot && toast.undoBacklogSnapshot.length) {
+          body = { action: 'triage_backlog_restore', snapshot: toast.undoBacklogSnapshot }
         } else if (toast.undoRestoreIds && toast.undoRestoreIds.length) {
           body = { action: 'queued_manual_restore', ids: toast.undoRestoreIds }
         } else if (toast.undoId) {
@@ -1779,6 +1975,22 @@ window.__ModuleLoader__.load({
         var checkedCount = hasChecklist
           ? card.checklist.filter(function (item) { return !!item.checked }).length
           : 0
+        var isCodex = card.executorKind === 'codex-cli' || card.preferredRunner === 'codex'
+        var hasOrchestrator = Boolean(S.view && S.view.orchestrator)
+        var codexAvailable = Boolean(hasOrchestrator && S.view.orchestrator.codexAvailable)
+        var changedFiles = Array.isArray(card.changedFiles) ? card.changedFiles : []
+        if (hasOrchestrator && (card.group === 'queued' || card.group === 'later') && (codexAvailable || card.preferredRunner)) {
+          meta.push(hh('button', {
+            key: 'runner-sw',
+            type: 'button',
+            className: 'sa2-ws',
+            title: '点击切换执行器（Codex 独立 Worktree / DSH 会话 / 人工）',
+            onClick: function (event) {
+              if (event && typeof event.stopPropagation === 'function') event.stopPropagation()
+              cycleRunner(card)
+            },
+          }, isCodex ? '⚡ Codex Worktree' : (card.preferredRunner === 'manual' ? '👤 人工自办' : '💬 DSH 会话')))
+        }
         return hh('li', {
           key: card.id,
           className: 'sa2-row' + (isWait ? ' is-wait' : '') + (card.stage === 'stuck' ? ' is-stuck' : ''),
@@ -1794,11 +2006,25 @@ window.__ModuleLoader__.load({
                 card.code ? hh('span', { className: 'sa2-code' }, card.code) : null,
                 card.title,
               ),
+              isCodex
+                ? hh('span', { className: 'sa2-runner-tag codex' }, card.worktreeBranch ? ('⚡ Codex · ' + card.worktreeBranch) : '⚡ Codex Worktree')
+                : (card.preferredRunner === 'manual' ? hh('span', { className: 'sa2-runner-tag' }, '👤 人工') : null),
               badge ? hh('span', { className: 'sa2-badge' }, badge) : null,
               card.lastReportBy === 'mcp' ? hh('span', { className: 'sa2-badge is-ext' }, '外部 Agent 交的') : null,
               card.rejectCount ? hh('span', { className: 'sa2-badge' }, '打回过 ' + card.rejectCount + ' 次') : null,
             ),
             card.reason ? hh('p', { className: 'sa2-why' }, card.reason) : null,
+            card.group === 'running' && card.lastStep
+              ? hh('p', { className: 'sa2-live-step' }, hh('b'), hh('span', null, card.lastStep))
+              : null,
+            isWait && card.lastSummary
+              ? hh('div', { className: 'sa2-dec-summary' }, card.lastSummary)
+              : null,
+            isWait && changedFiles.length
+              ? hh('div', { className: 'sa2-dec-files' }, changedFiles.map(function (f) {
+                  return hh('span', { key: f, className: 'sa2-dec-file', title: f }, f)
+                }))
+              : null,
             hasChecklist
               ? hh('div', { className: 'sa2-proof-bar' },
                   hh('span', { className: 'sa2-proof-pill' }, '✓ 验收单 ' + checkedCount + '/' + card.checklist.length),
@@ -1829,7 +2055,7 @@ window.__ModuleLoader__.load({
               : null,
           ),
           hh('div', { className: 'sa2-acts' },
-            card.group === 'running' && card.sessionId
+            card.group === 'running' && card.sessionId && card.executorKind !== 'codex-cli'
               ? hh('button', {
                   key: 'session',
                   type: 'button',
@@ -1837,6 +2063,19 @@ window.__ModuleLoader__.load({
                   title: card.sessionId,
                   onClick: function () { openSessionRow(card) },
                 }, resolveOpenSession() ? '打开会话' : sessionShort8(card.sessionId))
+              : null,
+            card.worktreeBranch && (card.group === 'running' || card.stage === 'review')
+              ? hh('button', {
+                  key: 'branch',
+                  type: 'button',
+                  className: 'sa2-cli-link',
+                  title: card.worktreePath || card.worktreeBranch,
+                  onClick: function (event) {
+                    if (event && typeof event.stopPropagation === 'function') event.stopPropagation()
+                    var cmd = card.stage === 'review' ? ('git merge --no-ff ' + card.worktreeBranch) : card.worktreeBranch
+                    copyWithFeedback(cmd, '已复制：' + cmd, cmd)
+                  },
+                }, card.stage === 'review' ? '复制合并命令' : '复制分支')
               : null,
             (card.actions || []).map(function (definition, index) {
               return renderAction(card, definition, index)
@@ -2088,6 +2327,381 @@ window.__ModuleLoader__.load({
               disabled: S.busy === 'create' || !String(S.composer || '').trim(),
             }, '记下'),
           ),
+        )
+      }
+
+      function renderSurfaceBar(activeSurface, totalCards, waiting, pendingCount) {
+        var waitTotal = (waiting || 0) + (pendingCount || 0)
+        return hh('div', { className: 'sa2-surface-bar', role: 'tablist', 'aria-label': '视图切换' },
+          hh('button', {
+            type: 'button',
+            role: 'tab',
+            className: 'sa2-surf-btn',
+            'aria-selected': activeSurface === 'cockpit' ? 'true' : 'false',
+            'aria-pressed': activeSurface === 'cockpit' ? 'true' : 'false',
+            onClick: function () { patch({ surface: 'cockpit' }) },
+          }, '⚡ 智能驾驶舱', waitTotal > 0 ? hh('span', { className: 'sa2-surf-cnt' }, String(waitTotal)) : null),
+          hh('button', {
+            type: 'button',
+            role: 'tab',
+            className: 'sa2-surf-btn',
+            'aria-selected': activeSurface === 'backlog' ? 'true' : 'false',
+            'aria-pressed': activeSurface === 'backlog' ? 'true' : 'false',
+            onClick: function () { patch({ surface: 'backlog' }) },
+          }, '🗂 选题仓库', totalCards > 0 ? hh('span', { className: 'sa2-surf-cnt' }, String(totalCards)) : null),
+        )
+      }
+
+      function collectTriageWorkspaceOptions(plan) {
+        var seen = {}
+        var out = []
+        function addOpt(pathVal, labelVal) {
+          var p = String(pathVal || '').trim()
+          if (!p || seen[p]) return
+          seen[p] = true
+          out.push({ path: p, label: String(labelVal || wsLabel(p)) })
+        }
+        var known = (S.view && Array.isArray(S.view.workspacesKnown)) ? S.view.workspacesKnown : []
+        known.forEach(function (entry) { addOpt(entry && entry.path, entry && entry.label) })
+        listHostWorkspaceItems(hookWsRef.current).forEach(function (entry) { addOpt(entry && entry.path, entry && entry.label) })
+        var cand = (plan && Array.isArray(plan.candidates)) ? plan.candidates : []
+        cand.forEach(function (entry) { addOpt(entry && entry.path, entry && entry.label) })
+        var items = (plan && Array.isArray(plan.items)) ? plan.items : []
+        items.forEach(function (item) {
+          if (item && item.workspacePath) addOpt(item.workspacePath, item.workspaceLabel)
+        })
+        return out
+      }
+
+      function renderTriageComposer() {
+        var usePicker = canUseWorkspacePicker(props)
+        var selected = S.composerWorkspace
+        var resolvedPath = selected === null
+          ? null
+          : selected
+            ? selected
+            : (S.view && S.view.defaultWorkspace) || null
+        var label = selected === null
+          ? '自动匹配'
+          : selected
+            ? wsLabel(selected)
+            : S.view && S.view.defaultWorkspace
+              ? wsLabel(S.view.defaultWorkspace)
+              : '自动匹配'
+        var autoMode = S.composerAuto !== false
+        var codexAvailable = Boolean(S.view && S.view.orchestrator && S.view.orchestrator.codexAvailable)
+        var router = (S.view && S.view.router) || { mode: 'observe', maxRunning: 2 }
+        var plan = S.triagePlan
+        var wsOptions = plan ? collectTriageWorkspaceOptions(plan) : []
+
+        return hh('section', { className: 'sa2-ck-triage-wrap', 'aria-label': 'AI 分诊与派工台' },
+          hh('div', { className: 'sa2-triage' },
+            hh('textarea', {
+              value: S.composer,
+              placeholder: '把多件事写在一起也行，例如：“帮我把 blog 项目的搜索卡顿修掉；顺便检查 superagent 的通知配置”—— AI 自动拆卡、选目录、挑 Codex / DSH…',
+              'aria-label': '一句话派单或 AI 拆单分诊',
+              onChange: function (event) { patch({ composer: event.target.value, triageError: null, composerError: null }) },
+              onKeyDown: function (event) {
+                if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+                  event.preventDefault()
+                  runTriagePlan()
+                }
+              },
+            }),
+            hh('div', { className: 'sa2-triage-bar' },
+              hh('div', { className: 'sa2-say-meta' },
+                hh('button', {
+                  type: 'button',
+                  className: 'sa2-chip',
+                  onClick: function (event) { openPicker('composer', null, 'workspace', event && event.currentTarget) },
+                  title: selected || (S.view && S.view.defaultWorkspace) || '由 AI 根据已知仓库自动匹配',
+                }, '目录提示 · ', hh('b', null, label)),
+                usePicker && resolvedPath
+                  ? hh('button', {
+                      type: 'button',
+                      className: 'sa2-chip-x',
+                      title: '清除固定目录，交由 AI 自动匹配',
+                      'aria-label': '清除固定目录，交由 AI 自动匹配',
+                      onClick: function () {
+                        nativeTargetRef.current = null
+                        patch({ composerWorkspace: null, picker: null, composerError: null, triageError: null })
+                      },
+                    }, '自动匹配')
+                  : null,
+                hh('button', {
+                  type: 'button',
+                  className: 'sa2-mode-chip' + (autoMode ? ' is-auto' : ''),
+                  'aria-pressed': autoMode ? 'true' : 'false',
+                  title: autoMode ? '切到手动：记下后先放「以后再说」' : '切回自动：记下后直接排入自动队列',
+                  onClick: function () { patch({ composerAuto: !autoMode }) },
+                }, autoMode ? '⚡ 记下即入自动队' : '📌 先放以后再说'),
+              ),
+              hh('div', { className: 'sa2-triage-acts' },
+                hh('button', {
+                  type: 'button',
+                  className: 'sa2-btn',
+                  disabled: S.busy === 'create' || S.triageCommitBusy || !String(S.composer || '').trim(),
+                  onClick: create,
+                }, '直接入队'),
+                hh('button', {
+                  type: 'button',
+                  className: 'sa2-btn ai',
+                  disabled: S.triageBusy || S.triageCommitBusy || !String(S.composer || '').trim(),
+                  onClick: function () { runTriagePlan() },
+                }, S.triageBusy ? '正在拆单…' : '✨ AI 拆单并分配'),
+              ),
+            ),
+          ),
+          (S.triageError || S.composerError)
+            ? hh('p', { className: 'sa2-say-note' }, S.triageError || S.composerError)
+            : null,
+          plan && Array.isArray(plan.items) && plan.items.length
+            ? hh('div', { className: 'sa2-plan', role: 'region', 'aria-label': 'AI 分诊提案' },
+                hh('div', { className: 'sa2-plan-hd' },
+                  hh('h3', null,
+                    '✨ AI 分诊提案 · 共 ' + plan.items.length + ' 件',
+                    hh('span', { className: 'sa2-badge' }, plan.usedLlm ? 'LLM 拆单' : '本地规则拆单'),
+                    plan.llmError ? hh('span', { className: 'sa2-badge is-ext' }, plan.llmError) : null,
+                  ),
+                  hh('button', {
+                    type: 'button',
+                    className: 'sa2-link',
+                    onClick: function () { patch({ triagePlan: null, triageError: null }) },
+                  }, '收起提案'),
+                ),
+                hh('div', { className: 'sa2-plan-list' }, plan.items.map(function (item, idx) {
+                  var currRunner = item.runner || 'dsh'
+                  var clList = Array.isArray(item.checklist) ? item.checklist : []
+                  return hh('div', { key: idx, className: 'sa2-plan-item' },
+                    hh('div', { className: 'sa2-plan-top' },
+                      hh('input', {
+                        type: 'text',
+                        className: 'sa2-plan-title',
+                        value: item.title || '',
+                        'aria-label': '提案标题 ' + (idx + 1),
+                        onChange: function (event) { updatePlanItem(idx, { title: event.target.value }) },
+                      }),
+                      hh('select', {
+                        className: 'sa2-plan-ws',
+                        value: item.workspacePath || '',
+                        'aria-label': '提案工作区 ' + (idx + 1),
+                        onChange: function (event) {
+                          var val = event.target.value || null
+                          updatePlanItem(idx, { workspacePath: val, workspaceExplicit: !!val })
+                        },
+                      },
+                        hh('option', { value: '' }, '先不定工作区'),
+                        wsOptions.map(function (opt) {
+                          return hh('option', { key: opt.path, value: opt.path, title: opt.path }, opt.label + ' · ' + opt.path)
+                        }),
+                      ),
+                      hh('button', {
+                        type: 'button',
+                        className: 'sa2-btn small',
+                        onClick: function () { removePlanItem(idx) },
+                      }, '去掉'),
+                    ),
+                    hh('div', { className: 'sa2-plan-runners' },
+                      hh('button', {
+                        type: 'button',
+                        className: 'sa2-rpill',
+                        disabled: !codexAvailable,
+                        'aria-pressed': currRunner === 'codex' ? 'true' : 'false',
+                        title: codexAvailable ? '使用 Codex CLI 在独立 Git Worktree 后台并发执行' : '未检测到本地 Codex CLI',
+                        onClick: function () { updatePlanItem(idx, { runner: 'codex' }) },
+                      }, '⚡ Codex Worktree'),
+                      hh('button', {
+                        type: 'button',
+                        className: 'sa2-rpill',
+                        'aria-pressed': currRunner === 'dsh' ? 'true' : 'false',
+                        onClick: function () { updatePlanItem(idx, { runner: 'dsh' }) },
+                      }, '💬 DSH 会话'),
+                      hh('button', {
+                        type: 'button',
+                        className: 'sa2-rpill',
+                        'aria-pressed': currRunner === 'manual' ? 'true' : 'false',
+                        onClick: function () { updatePlanItem(idx, { runner: 'manual' }) },
+                      }, '👤 人工自办'),
+                      hh('button', {
+                        type: 'button',
+                        className: 'sa2-rpill',
+                        'aria-pressed': item.later ? 'false' : 'true',
+                        onClick: function () { updatePlanItem(idx, { later: !item.later }) },
+                      }, item.later ? '📌 放以后再说' : '⚡ 排入队列'),
+                      hh('button', {
+                        type: 'button',
+                        className: 'sa2-rpill',
+                        'aria-pressed': item.needsNod ? 'true' : 'false',
+                        onClick: function () { updatePlanItem(idx, { needsNod: !item.needsNod }) },
+                      }, item.needsNod ? '✋ 需点头放行' : '无需点头'),
+                    ),
+                    item.attachToTaskId
+                      ? hh('p', { className: 'sa2-plan-why' },
+                          '↪ 疑似补充已有卡 ' + item.attachToTaskId + ' 的要求，确认后将追加留言 ',
+                          hh('button', {
+                            type: 'button',
+                            className: 'sa2-link',
+                            onClick: function () { updatePlanItem(idx, { action: 'create', attachToTaskId: null }) },
+                          }, '改为新建卡'),
+                        )
+                      : ((item.runnerReason || item.workspaceReason || item.nodReason)
+                          ? hh('p', { className: 'sa2-plan-why' }, [item.workspaceReason, item.runnerReason, item.nodReason].filter(Boolean).join(' · '))
+                          : null),
+                    clList.length
+                      ? hh('ul', { className: 'sa2-plan-cl' }, clList.map(function (cText, cIdx) {
+                          return hh('li', { key: cIdx },
+                            hh('span', null, '○ ' + cText),
+                            hh('button', {
+                              type: 'button',
+                              className: 'sa2-link',
+                              onClick: function () {
+                                updatePlanItem(idx, {
+                                  checklist: clList.filter(function (_x, j) { return j !== cIdx }),
+                                })
+                              },
+                            }, '删项'),
+                          )
+                        }))
+                      : null,
+                  )
+                })),
+                hh('div', { className: 'sa2-plan-foot' },
+                  hh('span', { className: 'sa2-sm' },
+                    router.mode === 'auto'
+                      ? '当前已开启自动并发调度：确认后可立即后台开工'
+                      : '当前为观望模式：确认后先入队，不会擅自跑脚本',
+                  ),
+                  hh('button', {
+                    type: 'button',
+                    className: 'sa2-btn pri',
+                    disabled: S.triageCommitBusy,
+                    onClick: commitTriagePlan,
+                  }, S.triageCommitBusy ? '正在落库…' : ('✓ 确认创建并安排 (' + plan.items.length + ' 件)')),
+                ),
+              )
+            : null,
+        )
+      }
+
+      function renderLiveStrip(runningRows) {
+        if (!runningRows || !runningRows.length) return null
+        return hh('section', { className: 'sa2-ck-sec', id: 'sa2-cockpit-live', 'aria-label': '后台正在推进的任务' },
+          hh('div', { className: 'sa2-ck-hd' },
+            hh('h2', null, hh('i', { className: 'sa2-sec-dot running' }), '正在自动推进'),
+            hh('span', { className: 'sa2-cnt' }, String(runningRows.length)),
+            hh('span', { className: 'sa2-hint' }, '各自独立 Worktree / 会话并发推进'),
+          ),
+          hh('div', { className: 'sa2-live-strip' }, runningRows.map(function (card) {
+            var isCodex = card.executorKind === 'codex-cli' || card.preferredRunner === 'codex'
+            return hh('article', { key: card.id, className: 'sa2-live-card' },
+              hh('div', { className: 'sa2-live-card-top' },
+                hh('button', {
+                  type: 'button',
+                  className: 'sa2-title',
+                  onClick: function () { openCard(card.id) },
+                },
+                  card.code ? hh('span', { className: 'sa2-code' }, card.code) : null,
+                  card.title,
+                ),
+                hh('span', { className: 'sa2-runner-tag' + (isCodex ? ' codex' : '') },
+                  isCodex ? (card.worktreeBranch ? ('⚡ ' + card.worktreeBranch) : '⚡ Codex') : '💬 DSH',
+                ),
+              ),
+              hh('p', { className: 'sa2-meta' },
+                [
+                  card.workspaceLabel || (card.workspacePath ? wsLabel(card.workspacePath) : null),
+                  card.age || null,
+                ].filter(Boolean).join(' · '),
+              ),
+              hh('p', { className: 'sa2-live-step' },
+                hh('b'),
+                hh('span', null, card.lastStep || (isCodex ? 'Codex 正在独立 worktree 执行…' : 'DSH 会话正在推进…')),
+              ),
+              hh('div', { className: 'sa2-live-card-acts' },
+                card.sessionId && card.executorKind !== 'codex-cli'
+                  ? hh('button', {
+                      type: 'button',
+                      className: 'sa2-btn small',
+                      onClick: function () { openSessionRow(card) },
+                    }, resolveOpenSession() ? '打开会话' : sessionShort8(card.sessionId))
+                  : null,
+                card.worktreeBranch
+                  ? hh('button', {
+                      type: 'button',
+                      className: 'sa2-cli-link',
+                      onClick: function () { copyWithFeedback(card.worktreeBranch, '已复制：' + card.worktreeBranch, card.worktreeBranch) },
+                    }, '复制分支')
+                  : null,
+                hh('button', {
+                  type: 'button',
+                  className: 'sa2-link',
+                  onClick: function () { openCard(card.id) },
+                }, '看详情'),
+              ),
+            )
+          })),
+        )
+      }
+
+      function renderCockpit(totalCards, waiting, pendingCount) {
+        var groups = (S.view && S.view.groups) || {}
+        var runningRows = groups.running || []
+        var waitingRows = groups.waiting || []
+        var queuedRows = groups.queued || []
+        var hasPlan = Boolean(S.triagePlan && Array.isArray(S.triagePlan.items) && S.triagePlan.items.length)
+        var calm = !runningRows.length && !waitingRows.length && !pendingCount && !hasPlan
+        var samples = [
+          '帮我把最近失败的单测排查修好；顺便检查一下提交流程和发布脚本',
+          '帮 superagent 补充文档说明并核对今天待拍板事项',
+        ]
+        return hh(React.Fragment, null,
+          renderTriageComposer(),
+          renderLiveStrip(runningRows),
+          (waitingRows.length > 0 || pendingCount > 0)
+            ? hh('section', { className: 'sa2-ck-sec', id: 'sa2-cockpit-decisions', 'aria-label': '等你拍板的决定' },
+                hh('div', { className: 'sa2-ck-hd' },
+                  hh('h2', null, hh('i', { className: 'sa2-sec-dot waiting' }), '等你拍板'),
+                  hh('span', { className: 'sa2-cnt' }, String(waitingRows.length)),
+                  hh('button', {
+                    type: 'button',
+                    className: 'sa2-link sa2-hint',
+                    onClick: function () { patch({ surface: 'backlog' }) },
+                  }, '切到选题仓库看全部 (' + totalCards + ')'),
+                ),
+                waitingRows.length > 0
+                  ? hh('ul', { className: 'sa2-list' }, waitingRows.map(renderRow))
+                  : null,
+                renderPendingRail(),
+              )
+            : null,
+          calm
+            ? hh('section', { className: 'sa2-calm', 'aria-label': '此刻清静' },
+                hh('div', null,
+                  hh('h2', { style: { fontSize: '15px', fontWeight: 600, marginBottom: '4px' } }, '此刻不用你盯。'),
+                  hh('p', null,
+                    queuedRows.length
+                      ? ('后台还有 ' + queuedRows.length + ' 件正在排队等位，全部 ' + totalCards + ' 张卡都可在选题仓库看到。')
+                      : (totalCards
+                          ? ('选题仓库共有 ' + totalCards + ' 张卡；写下新要求即可让 AI 拆单分诊并派工。')
+                          : '上面写一句混合需求，AI 会帮你拆卡、挑工作区、指派 Codex Worktree 或 DSH 会话。'),
+                  ),
+                  hh('div', { className: 'sa2-ob-prompts', style: { marginTop: '10px' } }, samples.map(function (sample, idx) {
+                    return hh('button', {
+                      key: idx,
+                      type: 'button',
+                      className: 'sa2-ob-try',
+                      onClick: function () { triageSample(sample) },
+                    }, '试试：' + sample)
+                  })),
+                ),
+                hh('button', {
+                  type: 'button',
+                  className: 'sa2-btn',
+                  onClick: function () { patch({ surface: 'backlog' }) },
+                }, '打开选题仓库' + (totalCards ? (' (' + totalCards + ')') : '')),
+              )
+            : null,
+          renderVents(),
         )
       }
 
@@ -2571,14 +3185,22 @@ window.__ModuleLoader__.load({
             rows.push(hh('h3', { key: 'ah' }, '派工记录'))
             detail.assignments.slice().reverse().forEach(function (assignment, index) {
               var line = []
+              if (assignment.executor === 'codex-cli') line.push('Codex CLI')
+              if (assignment.worktreeBranch) line.push('分支 ' + assignment.worktreeBranch)
               if (assignment.startedAt) line.push('开始 ' + formatAt(assignment.startedAt))
               if (assignment.endedAt) line.push('结束 ' + formatAt(assignment.endedAt))
               if (assignment.endReason) line.push('原因 ' + (END_REASON[assignment.endReason] || assignment.endReason))
               if (assignment.lastTurn && assignment.lastTurn.endKind) line.push('最后一轮 ' + (END_KIND[assignment.lastTurn.endKind] || assignment.lastTurn.endKind))
               rows.push(hh('div', { className: 'sa2-asg', key: assignment.id || ('a' + index) },
-                hh('span', { className: 'sa2-mono' }, '会话 ' + shortSession(assignment.sessionId)),
-                hh('span', { className: 'st' }, stateText(assignment.state) + (line.length ? ' · ' + line.join(' · ') : '')),
-                hh('span', { className: 'sa2-sm' }, assignment.waitingApproval ? '等你批准' : ''),
+                hh('span', { className: 'sa2-mono' }, (assignment.executor === 'codex-cli' ? 'Codex ' : '会话 ') + shortSession(assignment.sessionId)),
+                hh('span', { className: 'st' }, stateText(assignment.state) + (line.length ? ' · ' + line.join(' · ') : '') + (assignment.lastStep ? ' · ' + assignment.lastStep : '')),
+                assignment.worktreeBranch
+                  ? hh('button', {
+                      type: 'button',
+                      className: 'sa2-cli-link',
+                      onClick: function () { copyWithFeedback('git merge --no-ff ' + assignment.worktreeBranch, '已复制合并命令', assignment.worktreeBranch) },
+                    }, '合并命令')
+                  : hh('span', { className: 'sa2-sm' }, assignment.waitingApproval ? '等你批准' : ''),
               ))
             })
           }
@@ -2681,6 +3303,7 @@ window.__ModuleLoader__.load({
         var canUndo = !!(
           S.toast.undoId
           || (S.toast.undoPending && S.toast.undoPending.length)
+          || (S.toast.undoBacklogSnapshot && S.toast.undoBacklogSnapshot.length)
           || (S.toast.undoRestoreIds && S.toast.undoRestoreIds.length)
         )
         return hh('div', { className: 'sa2-toast', role: 'status' },
@@ -2774,6 +3397,15 @@ window.__ModuleLoader__.load({
                   onClick: function () { patch({ filterWs: currentFilter === '__unset__' ? 'all' : '__unset__' }) },
                 }, '未定目录 ', hh('small', null, String(unsetCount)))
               : null,
+            unsetCount > 0 && S.view && S.view.orchestrator
+              ? hh('button', {
+                  type: 'button',
+                  className: 'sa2-fpill',
+                  disabled: S.busy === 'backlog-triage',
+                  title: '由 AI 按标题/内容匹配已知工作区，补完后可一键撤销',
+                  onClick: runBacklogTriage,
+                }, S.busy === 'backlog-triage' ? '正在匹配…' : '✨ AI 补齐未定目录')
+              : null,
           ),
           hh('label', { className: 'sa2-search' },
             hh('input', {
@@ -2790,6 +3422,9 @@ window.__ModuleLoader__.load({
                 }, '✕')
               : null,
           ),
+          S.rowError && S.rowError.id === 'filter'
+            ? hh('p', { className: 'sa2-err', style: { flexBasis: '100%' } }, S.rowError.message)
+            : null,
         )
       }
 
@@ -2823,6 +3458,8 @@ window.__ModuleLoader__.load({
       var router = (S.view && S.view.router) || { mode: 'observe', maxRunning: 2 }
       var rules = (S.view && S.view.acceptanceRules) || { count: 0 }
       var vents = (S.view && S.view.vents) || { count: 0 }
+      var hasOrchestrator = Boolean(S.view && S.view.orchestrator)
+      var activeSurface = hasOrchestrator ? (S.surface || 'cockpit') : 'backlog'
       var rest = (totalCards === 0 && pendingCount === 0)
         ? '写一句想做的事，或用会话快捷键随时抓进台账。'
         : '另外 ' + (counts.running || 0) + ' 件在跑，' + (counts.queued || 0) + ' 件排队。'
@@ -2859,22 +3496,27 @@ window.__ModuleLoader__.load({
               : '现在没有事等你。',
             hh('span', { className: 'rest' }, rest),
           ),
+          hasOrchestrator ? renderSurfaceBar(activeSurface, totalCards, waiting, pendingCount) : null,
           S.error ? hh('p', { className: 'sa2-banner' }, '读不到最新台账：' + S.error) : null,
-          renderComposer(),
-          S.composerError ? hh('p', { className: 'sa2-say-note' }, S.composerError) : null,
-          totalCards === 0 && pendingCount === 0 ? renderOnboarding() : null,
-          hh('div', { className: 'sa2-field', role: 'navigation', 'aria-label': '全部事情，按轮到谁分', ref: fieldRef },
-            GROUPS.map(renderZone),
-          ),
-          renderFilterBar(totalCards),
-          renderTabs(),
-          GROUPS.map(function (key) {
-            // 待确认紧跟「等你」，不压到排队末尾；它默认收着，不抢首屏。
-            var parts = [renderSection(key)]
-            if (key === 'waiting') parts.push(renderPendingRail())
-            return parts
-          }),
-          renderVents(),
+          activeSurface === 'cockpit'
+            ? renderCockpit(totalCards, waiting, pendingCount)
+            : hh(React.Fragment, null,
+                renderComposer(),
+                S.composerError ? hh('p', { className: 'sa2-say-note' }, S.composerError) : null,
+                totalCards === 0 && pendingCount === 0 ? renderOnboarding() : null,
+                hh('div', { className: 'sa2-field', role: 'navigation', 'aria-label': '全部事情，按轮到谁分', ref: fieldRef },
+                  GROUPS.map(renderZone),
+                ),
+                renderFilterBar(totalCards),
+                renderTabs(),
+                GROUPS.map(function (key) {
+                  // 待确认紧跟「等你」，不压到排队末尾；它默认收着，不抢首屏。
+                  var parts = [renderSection(key)]
+                  if (key === 'waiting') parts.push(renderPendingRail())
+                  return parts
+                }),
+                renderVents(),
+              ),
           ),
         ),
         renderRouterPop(),

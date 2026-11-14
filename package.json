@@ -1,6 +1,6 @@
 {
   "name": "@oxmumu3/dsh-superagent",
-  "version": "0.2.0-preview.8",
+  "version": "0.3.0-preview.1",
   "private": false,
   "description": "Community task board for DeepSeek Harness with independent execution sessions and evidence-based review.",
   "type": "module",
@@ -48,11 +48,14 @@
     "lib/route.js",
     "lib/router.js",
     "lib/rules.js",
+    "lib/runners/codex-runner.js",
     "lib/sanitize.js",
     "lib/tools.js",
+    "lib/triage.js",
     "lib/vents.js",
     "lib/viewmodel.js",
     "lib/workspace.js",
+    "lib/worktree.js",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"

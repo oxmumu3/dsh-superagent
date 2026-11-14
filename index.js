@@ -75,14 +75,22 @@ export function apply(ctx, config = {}) {
     log(`router watch unavailable: ${error instanceof Error ? error.message : String(error)}`)
   }
 
-  // S5：通知调度。只从环境变量/插件配置取发送命令，默认关闭；定时器只做
-  // 合并/限频/安静时段检查，不读任何外部账号。
-  const notifyCommand = resolveNotifyCommand({ env: process.env, config }).command
+  // S5：通知调度。环境变量/配置优先；仅在非测试沙箱（!DSH_HOME）下自动探测本机 dsh-wechat。
+  const autoDiscoverWechat = !process.env.DSH_HOME
+  const notifyCommand = resolveNotifyCommand({ env: process.env, config, autoDiscover: autoDiscoverWechat }).command
+  if (notifyCommand) log(`notify wired: ${notifyCommand.slice(0, 2).join(' ')}`)
   let notifyBusy = false
   const notifyTimer = setInterval(() => {
     if (notifyBusy) return
     notifyBusy = true
-    void runNotifyOnce({ file: engine.file, config, env: process.env, log, decisionAvailable })
+    void runNotifyOnce({
+      file: engine.file,
+      config,
+      env: process.env,
+      autoDiscover: autoDiscoverWechat,
+      log,
+      decisionAvailable,
+    })
       .catch(error => log(`notify cycle failed: ${error instanceof Error ? error.message : String(error)}`))
       .finally(() => { notifyBusy = false })
   }, 10_000)
@@ -186,7 +194,55 @@ export function apply(ctx, config = {}) {
   let disposeTurnCapture
   try {
     refs.llm = ctx.get?.('llm', false) ?? null
-    if (!refs.llm) log('capture: llm service unavailable, model path disabled')
+    const llmAdapter = {
+      get ready() { return Boolean(refs.llm && typeof refs.llm.stream === 'function') },
+      async streamText(prompt) {
+        if (!refs.llm || typeof refs.llm.stream !== 'function') throw new Error('llm service unavailable')
+        const hostAdapter = createHostAdapter(refs, log)
+        let modelInfo = null
+        try { modelInfo = await hostAdapter.resolveModel() } catch { modelInfo = null }
+        const provider = process.env.DSH_SUPERAGENT_PROVIDER || modelInfo?.provider || 'deepseek-account'
+        const model = process.env.DSH_SUPERAGENT_MODEL || modelInfo?.model || 'deepseek-chat'
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 8000)
+        try {
+          let out = ''
+          for await (const chunk of refs.llm.stream({
+            provider,
+            model,
+            messages: [{ role: 'user', content: [{ type: 'text', text: String(prompt).slice(0, 4000) }] }],
+            temperature: 0,
+            maxTokens: 1200,
+            signal: controller.signal,
+          })) {
+            if (chunk?.type === 'text-delta' && typeof chunk.text === 'string') out += chunk.text
+            if (chunk?.type === 'finish') break
+          }
+          return out
+        } finally {
+          clearTimeout(timer)
+        }
+      },
+    }
+    engine.setLlmAdapter?.(llmAdapter)
+    try {
+      ctx.inject?.(['llm'], scope => {
+        try {
+          refs.llm = scope?.llm ?? scope?.get?.('llm', false) ?? null
+          if (refs.llm) {
+            engine.setLlmAdapter?.(llmAdapter)
+            log('llm bound asynchronously for triage')
+          }
+          return () => { refs.llm = null }
+        } catch (error) {
+          log(`llm inject failed: ${error instanceof Error ? error.message : String(error)}`)
+          return undefined
+        }
+      })
+    } catch {
+      // Older harnesses without ctx.inject on llm stay compatible.
+    }
+    if (!refs.llm) log('capture: llm service unavailable, deterministic fallback active until llm mounts')
     let captureMode = 'explicit'
     try {
       captureMode = readCapture(engine.file).mode
@@ -229,7 +285,7 @@ export function apply(ctx, config = {}) {
     log(`queue watcher unavailable: ${error instanceof Error ? error.message : String(error)}`)
   }
 
-  // Patrol: deterministic checks on a timer; never calls a model.
+  // Patrol: deterministic checks on a timer; also reconciles orphaned processes.
   const patrolTimer = setInterval(() => {
     try {
       const result = patrol()
@@ -237,6 +293,9 @@ export function apply(ctx, config = {}) {
         log(`patrol: ${result.findings.length} finding(s)`)
         for (const f of result.findings) log(`  ${f.kind}: ${f.message}`)
       }
+      void engine.reconcile?.().catch(error => {
+        log(`patrol reconcile failed: ${error instanceof Error ? error.message : String(error)}`)
+      })
     } catch (error) {
       log(`patrol failed: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -320,6 +379,7 @@ function registerDispatchTool(tools, engine) {
       properties: {
         id: { type: 'string', description: '任务 id' },
         cwd: { type: 'string', description: '执行会话的工作目录（项目根）' },
+        runner: { type: 'string', description: '可选：codex（独立 Git Worktree）或 dsh（默认）' },
         ifVersion: { type: 'number', description: '可选：卡片版本号' },
       },
     },
@@ -331,6 +391,7 @@ function registerDispatchTool(tools, engine) {
       }
       const run = await engine.startTask(task.id, {
         cwd: args?.cwd,
+        runner: args?.runner,
         ifVersion: args?.ifVersion === undefined ? undefined : Number(args.ifVersion),
         by: 'agent',
       })
