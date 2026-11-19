@@ -179,11 +179,12 @@ assert.equal(fs.existsSync(wt.worktreeRoot), false)
 // ---------------------------------------------------------------------------
 // 3. Scheduler sameDir === 'wait' exemption for codex + manual skip
 // ---------------------------------------------------------------------------
-const c1 = createTask({ title: 'codex-1', workspacePath: alphaRepo, preferredRunner: 'codex', queue: { auto: true } }, { file: ledgerFile })
-const c2 = createTask({ title: 'codex-2', workspacePath: alphaRepo, preferredRunner: 'codex', queue: { auto: true } }, { file: ledgerFile })
-const d1 = createTask({ title: 'dsh-1', workspacePath: betaRepo, preferredRunner: 'dsh', queue: { auto: true } }, { file: ledgerFile })
-const d2 = createTask({ title: 'dsh-2', workspacePath: betaRepo, preferredRunner: 'dsh', queue: { auto: true } }, { file: ledgerFile })
-const m1 = createTask({ title: 'manual-1', workspacePath: betaRepo, preferredRunner: 'manual', queue: { auto: true } }, { file: ledgerFile })
+const baseQueueAt = Date.now() - 10_000
+const c1 = createTask({ title: 'codex-1', workspacePath: alphaRepo, preferredRunner: 'codex', queue: { auto: true, at: baseQueueAt + 1 } }, { file: ledgerFile })
+const c2 = createTask({ title: 'codex-2', workspacePath: alphaRepo, preferredRunner: 'codex', queue: { auto: true, at: baseQueueAt + 2 } }, { file: ledgerFile })
+const d1 = createTask({ title: 'dsh-1', workspacePath: betaRepo, preferredRunner: 'dsh', queue: { auto: true, at: baseQueueAt + 3 } }, { file: ledgerFile })
+const d2 = createTask({ title: 'dsh-2', workspacePath: betaRepo, preferredRunner: 'dsh', queue: { auto: true, at: baseQueueAt + 4 } }, { file: ledgerFile })
+const m1 = createTask({ title: 'manual-1', workspacePath: betaRepo, preferredRunner: 'manual', queue: { auto: true, at: baseQueueAt + 5 } }, { file: ledgerFile })
 
 const plan = planSchedule(
   [c1, c2, d1, d2, m1],

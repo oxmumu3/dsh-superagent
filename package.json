@@ -1,11 +1,11 @@
 {
   "name": "@oxmumu3/dsh-superagent",
-  "version": "0.3.0-preview.1",
+  "version": "0.3.0",
   "private": false,
-  "description": "Community task board for DeepSeek Harness with independent execution sessions and evidence-based review.",
+  "description": "DeepSeek Harness 原生智能任务总管：一句话 AI 拆单分诊、Codex Git Worktree 并发派工、驾驶舱/选题仓库双视图与证据验收闭环",
   "type": "module",
   "main": "index.js",
-  "author": "牛村木木山",
+  "author": "牛村木木山 <157776623+oxmumu3@users.noreply.github.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -82,7 +82,7 @@
     "manifestVersion": 1
   },
   "engines": {
-    "node": ">=22",
-    "dsh": "0.2.2-rc.2 || 0.2.2-rc.3"
+    "node": ">=22.0.0",
+    "dsh": ">=0.2.2-rc.2 <0.3.0"
   }
 }

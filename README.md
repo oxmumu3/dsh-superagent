@@ -1,68 +1,79 @@
-# DSH Super Agent
+# Super Agent (@oxmumu3/dsh-superagent)
 
-一个跑在 DeepSeek Harness 里的社区任务看板。你说一句「记一下：…」，卡片出现在侧栏；你点「开始」，它才把一个独立执行会话派出去做事；做完回板上等你验收。
+**DeepSeek Harness 原生智能任务总管：你只管用大白话甩需求和最后拍板，中间的拆卡、找目录、并发施工和交活汇总全交给它。**
 
-维护者：牛村木木山。这是社区开源项目，不是 DeepSeek 官方产品。
+> 作者：`牛村木木山 <157776623+oxmumu3@users.noreply.github.com>` · 协议：`MIT` · 适用宿主：`DeepSeek Harness >=0.2.2-rc.2 <0.3.0`（macOS）  
+> 这是一个跑在 **DeepSeek Harness 桌面端内部** 的社区开源插件，**不是** DeepSeek 官方产品，也不是脱离桌面宿主的独立命令行工具。
 
-## 安装公开预览版
+## 安装方式
 
-本预览支持 DeepSeek Harness `0.2.2-rc.2` 和 `0.2.2-rc.3` 的 macOS Apple Silicon 版。其他宿主版本和系统尚未验证。[下载 Super Agent](https://github.com/oxmumu3/dsh-superagent/releases)。
+1. 在 DeepSeek Harness 新建会话，点顶部「标准模式」下拉，切到「创造模式」。
+2. 复制下面这句话发给 Agent，弹出授权时点「允许」：
 
-下载发布页里的 `.tgz`，在 Harness 的「插件 → 添加插件 → 安装第三方插件」填入下载归档的绝对路径。也可以在桌面关闭后，使用同版本官方 CLI：
-
-```sh
-dsh plugin --profile desktop add /绝对路径/已下载的SuperAgent安装包.tgz
+```text
+请通过插件管理器，从 npm 官方源安装并启用 @oxmumu3/dsh-superagent@latest。完成后请核对版本和启用状态，再带我打开左侧「Super Agent」。
 ```
 
-发布页附 SHA-256。请下载发布资产，GitHub 生成的源代码归档不是安装包。
+（也可以在「插件 -> 添加插件」直接填入 `@oxmumu3/dsh-superagent@latest` 安装并启用；如需离线包或备用下载，也可在 [GitHub Releases](https://github.com/oxmumu3/dsh-superagent/releases) 获取 `.tgz` 后通过「插件 -> 添加插件」安装。）
 
-## 第一次用
+开源仓库与图文说明（觉得有帮助欢迎点个 Star）：  
+<https://github.com/oxmumu3/dsh-superagent>
 
-1. 打开 DeepSeek Harness 左侧栏的 **Super Agent**。
-2. 在对话里说一句明确的话：`记一下：在测试目录生成 report.md`；或者直接在面板上记第一张卡。
-3. 点卡片上的目录，选一个工作目录。没选目录的卡不会自己开始。
-4. 点「开始」（没目录时按钮写「选个目录并开始」）。默认的观察档只记录、不自动开工；按下开始才进独立执行会话。
-5. 执行会话在所选目录完成任务，回报结果、验收清单和证据。
-6. 回到看板核对结果，点「验收」或填写原因并打回。项目重复用到的验收要求可以存为规矩。
+## 界面与核心能力一览（v0.3.0）
 
-## 它默认做什么
+### 1. ⚡ 智能驾驶舱 + 🗂 选题仓库双视图：不再用几十条待办糊你一脸
 
-- 收到宿主标为用户来源的消息时，只响应 `记一下：…`、`放到待办：…` 这类句首的明确记录指令。
-- 普通对话、自述（「这个要做」）、引文、代码块、问句、否定句、来源不明的消息都不建卡；这类内容仍然可以手动从面板记卡。
-- 默认不注册一轮结束时的内容采集，不把普通对话发给分类模型，不保留「待确认」。
-- 卡片、队列、执行会话和验收都可见；派工走宿主自己的模型与权限，插件不会替人批准审批。
-- 看板上的「排队」「等你」「以后再说」等分组只是状态，不代表已经自动执行。可在卡片上设置前置任务和同目录并发策略。
-- 通知默认关闭。启用后，需要本地配置的通知命令才能发送。
+- **默认进「⚡ 智能驾驶舱」**：首页只保留顶部派活框和**真正需要你拍板的事**（做完了等你验收、卡住了问你选方案、涉及敏感外发等你点头），默认折起后台低优「待确认」列表。
+- **按需切「🗂 选题仓库」**：所有历史卡片、5 组全景、搜索与目录筛选、吸顶分组页签全部收纳在这里，随时切换对照。
 
-## 它不做什么
+![DeepSeek Harness 实机 · 智能驾驶舱与拍板卡片](https://raw.githubusercontent.com/oxmumu3/dsh-superagent/main/docs/images/01-cockpit-dark.png)
 
-- 不是官方 Team 功能的替代品，也不声称得到 DeepSeek 官方认可。
-- 不是 DeepSeek 单仓里那个研究原型；这是独立的社区插件，代码、台账和安装方式都独立。
-- 不承诺全网唯一，也不承诺未在此版本验证过的能力。
+### 2. ✨ 一句话 AI 拆单分诊：自动配真实目录、起草验收清单、敏感动作挂点头锁
 
-## 升级和卸载
+- 把好几件事混在一句话里直接丢进输入框（例如 *「修复某项目启动竞态；顺便整理另一项目发布模板」*），点击 **「✨ AI 拆单并分配」**，先生成可修改的**分诊提案卡**：
+  - **自动拆单 & 真实目录防幻觉**：结合宿主工作区列表与已有任务路径匹配目标目录，严禁模型凭空编造不存在的路径；
+  - **推荐执行工人 & 起草验收清单**：按是否为 Git 代码仓与本机 `codex` 可用性推荐 **Codex Worktree** 或 **DSH 会话**，自动生成 2–3 条可核验清单；
+  - **风险点头锁**：命中发布、删除、外发、支付等风险关键词时自动标为 **✋ 需点头放行**，绝不先斩后奏；
+  - **老卡片一键整理**：在选题仓库点击 **「✨ AI 补齐未定目录」** 即可批量补全历史空白目录，附带 Toast 一键撤销快照。
 
-在 Harness 插件页卸载旧版后再安装新版。卸载不会删除本地任务台账，也不会删除执行会话写入所选工作目录的文件。
+![DeepSeek Harness 实机 · AI 分诊可编辑提案单与风控点头标记](https://raw.githubusercontent.com/oxmumu3/dsh-superagent/main/docs/images/02-triage-proposal.png)
 
-## 开发与测试
+### 3. 🛠 Codex CLI + Git Worktree 并发施工与证据验收闭环
 
-不依赖第三方运行时包。需要 Node.js 22 或更新版本。
+- **独立 Worktree 副本施工**：对 Git 代码仓的 Codex 任务自动创建独立 Git Worktree 分支工位并发推进；同一代码仓下的多个 Codex Worktree 任务自动豁免同目录串行等待，互不污染工作区。
+- **结构化交活 & 打回续跑**：工人完成时经 JSON Schema / CLI 结构化回填摘要、改动文件与验收单检查结果；点 **「打回」** 可附原因（并勾选保存为该工作区的长期验收规矩），触发 原 Worktree `codex exec resume` 续改；点 **「验收」** 后自动清理临时 Worktree。
+- **桌面静默防打扰提醒**：仅在真实非沙箱运行环境自动探测本机 `dsh-wechat`，在需要人工拍板或验收时投递提醒，隔离测试零误发。
+
+![DeepSeek Harness 实机 · 选题仓库 5 组全景与过滤条](https://raw.githubusercontent.com/oxmumu3/dsh-superagent/main/docs/images/03-backlog-panorama.png)
+
+## 它做什么 & 不做什么
+
+- **默认只记明确指令**：在普通对话收到用户来源消息时，只响应句首明确的 `记一下：…`、`放到待办：…` 等指令或面板内主动操作；不把普通聊天内容私自建卡或塞给外部分类器。
+- **权限边界清晰**：默认处于观望/可控模式，不会替人绕过宿主工具权限审批；遇到「✋ 需点头放行」卡片必须人工确认后才继续调度。
+- **兼容既有数据与契约**：保留全部既有台账格式与 S0–S9 工具契约（`sa_list` / `sa_get` / `sa_create` / `sa_move` / `sa_comment` / `sa_report` / `sa_check` / `sa_checklist` / `sa_depend` / `sa_dispatch`），卸载或升级均不删除 `~/.dsh/superagent-ledger.json` 任务台账。
+
+<details>
+<summary>开发者与本地验证说明（测试 / 确定性打包 / 许可）</summary>
+
+### 本地测试（零外部依赖，Node.js >= 22）
 
 ```sh
-node scripts/run-tests.mjs
 node scripts/check-client.cjs
+node scripts/run-tests.mjs
 ```
 
-测试全部在临时台账上跑，不读写日常台账、不启动宿主、不调真实模型。测试包含冻结的 S2 面板快照（`test/fixtures/s2-off-view.json`），并用已发布的 `0.2.0-preview.1` 源码测试旧版台账读取。
+所有测试均在临时台账目录中运行，不读写 `~/.dsh/superagent-ledger.json`、不修改日常桌面配置、不向外发真实消息。
 
-打预览包：
+### 构建确定性安装包
 
 ```sh
 node scripts/build-preview-package.mjs --out dist
 ```
 
-脚本只收集 `package.json` 的 `files` 白名单，生成固定 mtime 的 tar.gz、逐文件 SHA-256 清单和归档 SHA-256。同一 Node/zlib 版本连续两次构建应得到同一个归档哈希；不同 zlib 实现可能只改变 gzip 压缩字节，解压后的 tar 相同。正式发布以 CI 产出的唯一 exact tgz 为准，并在官方宿主复验同一个 SHA。
+构建脚本仅按 `package.json` 的 `files` 白名单打包并固定 mtime / uid / gid 与文件排序，连续两次构建产出完全一致的 SHA-256。正式发布以 GitHub Actions 工作流经 npm Trusted Publisher 产出的签名包及 SHA-256 回执为准。
 
-## 许可
+### 开源许可
 
-MIT，见 [LICENSE](LICENSE)。版权归牛村木木山。
+[MIT](LICENSE) · 版权归牛村木木山。
+
+</details>

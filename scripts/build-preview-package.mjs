@@ -115,7 +115,7 @@ if (fs.existsSync(out)) {
 } else {
   fs.mkdirSync(out, { recursive: false })
 }
-if (!/^\d+\.\d+\.\d+-preview\.\d+$/.test(manifest.version)) fail(`unexpected version: ${manifest.version}`)
+if (!/^\d+\.\d+\.\d+(-preview\.\d+)?$/.test(manifest.version)) fail(`unexpected version: ${manifest.version}`)
 if (manifest.private !== false) fail('package.json still private')
 if (manifest.license !== 'MIT') fail('license must be MIT')
 
